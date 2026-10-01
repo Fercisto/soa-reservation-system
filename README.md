@@ -1,14 +1,14 @@
 # SOA Reservation System
 
-A Service-Oriented Architecture (SOA) project developed as an academic project to demonstrate service interoperability and communication between applications built with different programming languages and technologies.
+A Service-Oriented Architecture (SOA) project developed as an academic project to demonstrate communication between a central Laravel service and a NestJS client.
 
 ## Overview
 
 The system follows a centralized service-oriented approach in which Laravel acts as the main backend service and contains the business logic of the reservation system.
 
-Other applications developed with different technologies consume the functionality provided by Laravel through REST APIs.
+The NestJS client consumes the functionality provided by Laravel through REST APIs.
 
-The purpose of the project is to demonstrate how applications developed with different programming languages and frameworks can communicate with a central service through standardized interfaces.
+The purpose of the project is to demonstrate how Laravel and NestJS communicate through standardized REST interfaces.
 
 ## Architecture
 
@@ -35,15 +35,15 @@ The project follows a service-oriented architecture where Laravel acts as the ma
                          └─────────┬─────────┘
                                    │
                   ┌────────────────┼────────────────┐
-                  │                │                │
-                  ▼                ▼                ▼
-           ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-           │   NestJS    │  │   Python    │  │    Java     │
-           │    Client   │  │    Client   │  │    Client   │
-           └─────────────┘  └─────────────┘  └─────────────┘
+                                    │
+                                    ▼
+                            ┌───────────────────┐
+                            │   NestJS Client   │
+                            │   Node.js / Nest  │
+                            └───────────────────┘
 ```
 
-Laravel is responsible for the main business rules and data processing. The other applications consume Laravel's APIs to access these functionalities.
+      Laravel is responsible for the main business rules and data processing. NestJS consumes Laravel's APIs to access these functionalities.
 
 ## Main Service
 
@@ -63,7 +63,7 @@ Responsibilities include:
 * Database operations
 * API endpoints
 
-The service exposes RESTful endpoints that can be consumed by applications developed with different programming languages.
+The service exposes RESTful endpoints consumed by the NestJS client and the React frontend.
 
 ## Clients
 
@@ -77,24 +77,6 @@ Its purpose is to demonstrate interoperability between:
 * JavaScript / Node.js / NestJS
 
 The NestJS application does not contain the main business logic. Instead, it requests the required functionality from the Laravel service.
-
-### Python Client
-
-A Python application that consumes the Laravel REST API.
-
-Its purpose is to demonstrate communication between:
-
-* PHP / Laravel
-* Python
-
-### Java Client
-
-A Java application that consumes the Laravel REST API.
-
-Its purpose is to demonstrate communication between:
-
-* PHP / Laravel
-* Java
 
 ## Frontend
 
@@ -153,19 +135,17 @@ Client
 Laravel API
 ```
 
-This allows applications developed with different technologies to use the same authentication service.
+This allows the NestJS client and the frontend to use the same authentication service.
 
 ## Technologies
 
-The project may include:
+The project uses:
 
 * PHP
 * Laravel
 * Laravel Sanctum
 * Node.js
 * NestJS
-* Python
-* Java
 * React
 * REST APIs
 * JSON
@@ -182,12 +162,6 @@ soa/
 ├── nest-client/
 │   └── NestJS application
 │
-├── python-client/
-│   └── Python application
-│
-├── java-client/
-│   └── Java application
-│
 ├── soa-frontend/
 │   └── React application
 │
@@ -199,4 +173,4 @@ soa/
 
 This project was developed as part of a Service-Oriented Architecture (SOA) course.
 
-The main objective is to demonstrate service interoperability by allowing applications developed with different programming languages and technologies to consume the functionality provided by a central Laravel service.
+The main objective is to demonstrate service interoperability between a central Laravel service and a NestJS client through REST APIs.
