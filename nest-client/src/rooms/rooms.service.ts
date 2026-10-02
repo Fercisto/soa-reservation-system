@@ -28,6 +28,14 @@ export class RoomsService {
     return this.request('get', `/rooms/${id}`);
   }
 
+  async update(id: string, room: CreateRoomDto, authorization: string) {
+    return this.request('put', `/rooms/${id}`, room, authorization);
+  }
+
+  async remove(id: string, authorization: string) {
+    return this.request('delete', `/rooms/${id}`, undefined, authorization);
+  }
+
   async create(createRoomDto: CreateRoomDto, authorization: string) {
     return this.request(
       'post',
@@ -51,7 +59,7 @@ export class RoomsService {
   }
 
   private async request(
-    method: 'get' | 'post' | 'patch',
+    method: 'get' | 'post' | 'put' | 'patch' | 'delete',
     path: string,
     body?: unknown,
     authorization?: string,
@@ -67,9 +75,17 @@ export class RoomsService {
             ? this.httpService.post(`${this.laravelApiUrl}${path}`, body, {
                 headers,
               })
-            : this.httpService.patch(`${this.laravelApiUrl}${path}`, body, {
-                headers,
-              }),
+            : method === 'put'
+              ? this.httpService.put(`${this.laravelApiUrl}${path}`, body, {
+                  headers,
+                })
+              : method === 'patch'
+                ? this.httpService.patch(`${this.laravelApiUrl}${path}`, body, {
+                    headers,
+                  })
+                : this.httpService.delete(`${this.laravelApiUrl}${path}`, {
+                    headers,
+                  }),
       );
 
       return response.data;

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Reservation;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Room extends Model
 {
@@ -26,4 +28,10 @@ class Room extends Model
             'features' => 'array',
         ];
     }
+
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
 }

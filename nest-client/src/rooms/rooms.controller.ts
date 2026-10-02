@@ -6,6 +6,8 @@ import {
   Param,
   Patch,
   Post,
+  Put,
+  Delete,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
@@ -58,6 +60,22 @@ export class RoomsController {
       updateRoomStatusDto,
       this.requireAuthorization(authorization),
     );
+  }
+
+  @UseGuards(AuthGuard)
+  @Put(':id')
+  update(
+    @Param('id') id: string,
+    @Body() room: CreateRoomDto,
+    @Headers('authorization') authorization: string,
+  ) {
+    return this.roomsService.update(id, room, this.requireAuthorization(authorization));
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete(':id')
+  remove(@Param('id') id: string, @Headers('authorization') authorization: string) {
+    return this.roomsService.remove(id, this.requireAuthorization(authorization));
   }
 
   private requireAuthorization(authorization: string): string {

@@ -13,7 +13,7 @@ class RoomTest extends TestCase
 
     public function test_authenticated_user_can_register_a_room(): void
     {
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
             ->postJson('/api/rooms', [
                 'number' => '101',
                 'type' => 'double',
@@ -65,7 +65,7 @@ class RoomTest extends TestCase
             'status' => 'available',
         ]);
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
             ->patchJson("/api/rooms/{$room->id}/status", ['status' => 'maintenance'])
             ->assertOk()
             ->assertJsonPath('status', 'maintenance');
@@ -74,5 +74,17 @@ class RoomTest extends TestCase
             'id' => $room->id,
             'status' => 'maintenance',
         ]);
+    }
+
+    public function test_customer_cannot_manage_rooms(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'customer']))
+            ->postJson('/api/rooms', [
+                'number' => '401',
+                'type' => 'single',
+                'price' => 80,
+                'capacity' => 1,
+            ])
+            ->assertForbidden();
     }
 }
