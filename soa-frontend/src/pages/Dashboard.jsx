@@ -3,9 +3,11 @@ import Login from '../components/Login.jsx'
 import Register from '../components/Register.jsx'
 import AdminDashboard from '../components/AdminDashboard.jsx'
 import CustomerDashboard from '../components/CustomerDashboard.jsx'
-
-const API_URL =
-  import.meta.env.VITE_API_URL || 'http://localhost:3000'
+import {
+  graphqlRequest,
+  loginRequest,
+  registerRequest,
+} from '../services/api.js'
 
 const EMPTY_ROOM = {
   number: '',
@@ -77,36 +79,27 @@ function Dashboard() {
     }
   }, [session, isAdmin])
 
-  async function request(path, options = {}) {
-    const response = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(session?.token
-          ? {
-              Authorization: `Bearer ${session.token}`,
-            }
-          : {}),
-        ...options.headers,
-      },
-    })
-
-    const data = await response.json().catch(() => null)
-
-    if (!response.ok) {
-      throw new Error(
-        data?.message ||
-          'No se pudo completar la solicitud.'
-      )
-    }
-
-    return data
+  async function gql(query, variables = {}) {
+    return graphqlRequest(query, variables, session?.token)
   }
 
   async function loadRooms() {
     try {
-      const data = await request('/rooms/available')
-      setRooms(data)
+      const data = await gql(`
+        query GetRooms {
+          rooms {
+            id
+            number
+            type
+            description
+            price
+            capacity
+            features
+            status
+          }
+        }
+      `)
+      setRooms(data.rooms || [])
     } catch (err) {
       showError(err.message)
     }
@@ -114,8 +107,21 @@ function Dashboard() {
 
   async function loadAvailableRooms() {
     try {
-      const data = await request('/rooms/available')
-      setRooms(data)
+      const data = await gql(`
+        query GetAvailableRooms {
+          availableRooms {
+            id
+            number
+            type
+            description
+            price
+            capacity
+            features
+            status
+          }
+        }
+      `)
+      setRooms(data.availableRooms || [])
     } catch (err) {
       showError(err.message)
     }
@@ -123,8 +129,30 @@ function Dashboard() {
 
   async function loadReservations() {
     try {
-      const data = await request('/reservations')
-      setReservations(data)
+      const data = await gql(`
+        query GetReservations {
+          reservations {
+            id
+            room_id
+            user_id
+            check_in
+            check_out
+            status
+            room {
+              id
+              number
+              type
+              price
+            }
+            user {
+              id
+              name
+              email
+            }
+          }
+        }
+      `)
+      setReservations(data.reservations || [])
     } catch (err) {
       showError(err.message)
     }
@@ -134,14 +162,37 @@ function Dashboard() {
     setCustomerDataReady(false)
 
     try {
-      const [roomsData, reservationsData] =
-        await Promise.all([
-          request('/rooms/available'),
-          request('/reservations'),
-        ])
+      const data = await gql(`
+        query GetCustomerData {
+          availableRooms {
+            id
+            number
+            type
+            description
+            price
+            capacity
+            features
+            status
+          }
+          reservations {
+            id
+            room_id
+            user_id
+            check_in
+            check_out
+            status
+            room {
+              id
+              number
+              type
+              price
+            }
+          }
+        }
+      `)
 
-      setRooms(roomsData)
-      setReservations(reservationsData)
+      setRooms(data.availableRooms || [])
+      setReservations(data.reservations || [])
       setCustomerDataReady(true)
     } catch (err) {
       showError(err.message)
@@ -149,29 +200,12 @@ function Dashboard() {
     }
   }
 
-  async function loginUser(login) {
+  async function loginUser(loginData) {
     setBusy(true)
     clearMessage()
 
     try {
-      const response = await fetch(
-        `${API_URL}/auth/login`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(login),
-        }
-      )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(
-          data?.message || 'Credenciales inválidas.'
-        )
-      }
+      const data = await loginRequest(loginData)
 
       const newSession = {
         token: data.token,
@@ -191,29 +225,12 @@ function Dashboard() {
     }
   }
 
-  async function registerUser(register) {
+  async function registerUser(registerData) {
     setBusy(true)
     clearMessage()
 
     try {
-      const response = await fetch(
-        `${API_URL}/auth/register`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(register),
-        }
-      )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(
-          data?.message || 'No se pudo crear la cuenta.'
-        )
-      }
+      await registerRequest(registerData)
 
       setMessage('Cuenta creada correctamente.')
       setShowRegister(false)
@@ -230,7 +247,6 @@ function Dashboard() {
       setBusy(false)
     }
   }
-
 
   function logout() {
     localStorage.removeItem('soa-session')
@@ -274,7 +290,7 @@ function Dashboard() {
       const payload = {
         number: room.number,
         type: room.type,
-        description: room.description,
+        description: room.description || '',
         price: Number(room.price),
         capacity: Number(room.capacity),
         features:
@@ -283,28 +299,38 @@ function Dashboard() {
                 .split(',')
                 .map((item) => item.trim())
                 .filter(Boolean)
-            : room.features,
+            : room.features || [],
         status: room.status,
       }
 
       if (editingId) {
-        await request(`/rooms/${editingId}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-        })
-
-        setMessage(
-          'Habitación actualizada correctamente.'
+        await gql(
+          `
+          mutation UpdateRoom($id: ID!, $input: CreateRoomInput!) {
+            updateRoom(id: $id, input: $input) {
+              id
+              number
+            }
+          }
+        `,
+          { id: editingId, input: payload }
         )
+
+        setMessage('Habitación actualizada correctamente.')
       } else {
-        await request('/rooms', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        })
-
-        setMessage(
-          'Habitación creada correctamente.'
+        await gql(
+          `
+          mutation CreateRoom($input: CreateRoomInput!) {
+            createRoom(input: $input) {
+              id
+              number
+            }
+          }
+        `,
+          { input: payload }
         )
+
+        setMessage('Habitación creada correctamente.')
       }
 
       setRoom(EMPTY_ROOM)
@@ -332,13 +358,16 @@ function Dashboard() {
     clearMessage()
 
     try {
-      await request(`/rooms/${roomToDelete.id}`, {
-        method: 'DELETE',
-      })
-
-      setMessage(
-        'Habitación eliminada correctamente.'
+      await gql(
+        `
+        mutation DeleteRoom($id: ID!) {
+          deleteRoom(id: $id)
+        }
+      `,
+        { id: roomToDelete.id }
       )
+
+      setMessage('Habitación eliminada correctamente.')
 
       await loadRooms()
     } catch (err) {
@@ -355,20 +384,27 @@ function Dashboard() {
     clearMessage()
 
     try {
-      await request('/reservations', {
-        method: 'POST',
-        body: JSON.stringify({
-          room_id: Number(booking.room_id),
-          check_in: booking.check_in,
-          check_out: booking.check_out,
-        }),
-      })
+      await gql(
+        `
+        mutation CreateReservation($input: CreateReservationInput!) {
+          createReservation(input: $input) {
+            id
+            status
+          }
+        }
+      `,
+        {
+          input: {
+            room_id: Number(booking.room_id),
+            check_in: booking.check_in,
+            check_out: booking.check_out,
+          },
+        }
+      )
 
       setBooking(EMPTY_BOOKING)
 
-      setMessage(
-        'Reservación creada correctamente.'
-      )
+      setMessage('Reservación creada correctamente.')
 
       await loadCustomerData()
     } catch (err) {
@@ -391,14 +427,19 @@ function Dashboard() {
     clearMessage()
 
     try {
-      await request(`/reservations/${id}/cancel`, {
-        method: 'PATCH',
-        body: JSON.stringify({}),
-      })
-
-      setMessage(
-        'Reservación cancelada correctamente.'
+      await gql(
+        `
+        mutation CancelReservation($id: ID!) {
+          cancelReservation(id: $id) {
+            id
+            status
+          }
+        }
+      `,
+        { id }
       )
+
+      setMessage('Reservación cancelada correctamente.')
 
       await loadCustomerData()
     } catch (err) {
@@ -413,9 +454,9 @@ function Dashboard() {
     setError('')
   }
 
-  function showError(message) {
+  function showError(msg) {
     setMessage('')
-    setError(message)
+    setError(msg)
   }
 
   if (!session) {
@@ -451,7 +492,6 @@ function Dashboard() {
       />
     )
   }
-
 
   if (isAdmin) {
     return (

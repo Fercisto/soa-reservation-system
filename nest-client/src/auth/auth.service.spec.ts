@@ -1,24 +1,28 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { AuthService } from './auth.service.js';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
 
-@Injectable()
-export class AuthService {
-  constructor(private readonly httpService: HttpService) {}
+describe('AuthService', () => {
+  let service: AuthService;
 
-  async getUser(authorization: string) {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get('http://127.0.0.1:8000/api/me', {
-          headers: {
-            Authorization: authorization,
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        {
+          provide: HttpService,
+          useValue: {
+            get: vi.fn(),
+            post: vi.fn(),
           },
-        }),
-      );
+        },
+      ],
+    }).compile();
 
-      return response.data;
-    } catch (error) {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-  }
-}
+    service = module.get<AuthService>(AuthService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+});

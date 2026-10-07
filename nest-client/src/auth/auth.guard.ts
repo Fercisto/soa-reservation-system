@@ -4,6 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { GqlExecutionContext } from '@nestjs/graphql';
 
 import { AuthService } from './auth.service.js';
 
@@ -12,9 +13,11 @@ export class AuthGuard implements CanActivate {
   constructor(private readonly authService: AuthService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const gqlCtx = GqlExecutionContext.create(context);
+    const req =
+      gqlCtx.getContext()?.req || context.switchToHttp().getRequest();
 
-    const authorization = request.headers.authorization;
+    const authorization = req?.headers?.authorization;
 
     if (!authorization) {
       throw new UnauthorizedException('Authorization token is required');
@@ -22,7 +25,7 @@ export class AuthGuard implements CanActivate {
 
     const user = await this.authService.getUser(authorization);
 
-    request.user = user;
+    req.user = user;
 
     return true;
   }
