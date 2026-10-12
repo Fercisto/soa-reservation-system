@@ -1,10 +1,19 @@
+import {
+  reservationStatus,
+  paymentStatusLabel,
+  isPaymentWindowOpen,
+} from '../utils/reservation.js'
+
 function AdminReservations({
   reservations,
   cancelReservation,
+  registerCashPayment,
   busy,
 }) {
   const activeReservations = reservations.filter(
-    (reservation) => reservation.status !== 'cancelled'
+    (reservation) =>
+      reservation.status === 'confirmed' ||
+      isPaymentWindowOpen(reservation)
   )
 
   return (
@@ -13,7 +22,7 @@ function AdminReservations({
         <div>
           <h2>Reservaciones activas</h2>
           <p>
-            Reservaciones confirmadas realizadas por los clientes.
+            Reservaciones confirmadas y pendientes de pago.
           </p>
         </div>
 
@@ -48,9 +57,29 @@ function AdminReservations({
                   {reservation.check_out}
                 </span>
 
-                <b className="simple-status confirmed">
-                  {reservation.status}
+                <b
+                  className={`simple-status ${
+                    reservationStatus(reservation).tone
+                  }`}
+                >
+                  {reservationStatus(reservation).label}
                 </b>
+
+                <span>
+                  {paymentStatusLabel(reservation.latest_payment)}
+                </span>
+
+                {isPaymentWindowOpen(reservation) && (
+                  <button
+                    className="simple-link"
+                    disabled={busy}
+                    onClick={() =>
+                      registerCashPayment(reservation)
+                    }
+                  >
+                    Cobrar en efectivo
+                  </button>
+                )}
 
                 <button
                   className="simple-danger"

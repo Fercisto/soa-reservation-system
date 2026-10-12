@@ -1,7 +1,19 @@
+import NotificationBell from './NotificationBell.jsx'
 import {
   reservationNights,
   money,
+  reservationStatus,
+  paymentStatusLabel,
+  isPaymentWindowOpen,
+  formatTime,
 } from '../utils/reservation.js'
+
+function nextDay(date) {
+  const next = new Date(`${date}T00:00:00Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+
+  return next.toISOString().slice(0, 10)
+}
 
 function CustomerDashboard({
   rooms,
@@ -9,12 +21,14 @@ function CustomerDashboard({
   booking,
   setBooking,
   createReservation,
+  payReservation,
   cancelReservation,
   message,
   error,
   busy,
   ready,
   logout,
+  notificationProps,
 }) {
   const currentDate = new Date()
   const today = [
@@ -23,24 +37,41 @@ function CustomerDashboard({
     String(currentDate.getDate()).padStart(2, '0'),
   ].join('-')
 
+  const selectedRoom = rooms.find(
+    (item) => String(item.id) === String(booking.room_id)
+  )
+  const bookingNights =
+    booking.check_in && booking.check_out
+      ? reservationNights(booking.check_in, booking.check_out)
+      : 0
+  const hasDates = bookingNights > 0
+
   return (
     <main className="customer-app">
       <header className="simple-nav">
         <strong>Reservaciones</strong>
 
-        <button
-          className="simple-link"
-          onClick={logout}
-        >
-          Cerrar sesión
-        </button>
+        <div className="nav-actions">
+          <NotificationBell {...notificationProps} />
+
+          <button
+            className="simple-link"
+            onClick={logout}
+          >
+            Cerrar sesión
+          </button>
+        </div>
       </header>
 
       <section className="customer-heading">
         <h1>Habitaciones disponibles</h1>
 
         <p>
-          Elige una habitación y reserva tus fechas.
+          {hasDates
+            ? `Del ${booking.check_in} al ${booking.check_out} · ${
+                rooms.length
+              } ${rooms.length === 1 ? 'habitación libre' : 'habitaciones libres'}`
+            : 'Elige tus fechas de entrada y salida para ver qué habitaciones están libres.'}
         </p>
       </section>
 
@@ -64,7 +95,9 @@ function CustomerDashboard({
             </div>
           ) : rooms.length === 0 ? (
             <div className="simple-empty">
-              No hay habitaciones disponibles.
+              {hasDates
+                ? 'No hay habitaciones libres para esas fechas. Prueba con otras.'
+                : 'No hay habitaciones disponibles.'}
             </div>
           ) : (
             rooms.map((item) => (
@@ -73,9 +106,11 @@ function CustomerDashboard({
                 key={item.id}
               >
                 <div>
-                  <span className="simple-status available">
-                    Disponible
-                  </span>
+                  {hasDates && (
+                    <span className="simple-status available">
+                      Disponible
+                    </span>
+                  )}
 
                   <span className="customer-number">
                     Habitación {item.number}
@@ -109,6 +144,7 @@ function CustomerDashboard({
 
                 <button
                   className="simple-button"
+                  disabled={!hasDates}
                   onClick={() =>
                     setBooking({
                       ...booking,
@@ -116,7 +152,11 @@ function CustomerDashboard({
                     })
                   }
                 >
-                  Reservar esta habitación
+                  {!hasDates
+                    ? 'Elige tus fechas primero'
+                    : String(item.id) === String(booking.room_id)
+                      ? 'Seleccionada'
+                      : 'Reservar esta habitación'}
                 </button>
               </article>
             ))
@@ -130,34 +170,6 @@ function CustomerDashboard({
           <h2>Nueva reservación</h2>
 
           <label>
-            Habitación
-
-            <select
-              required
-              value={booking.room_id}
-              onChange={(event) =>
-                setBooking({
-                  ...booking,
-                  room_id: event.target.value,
-                })
-              }
-            >
-              <option value="">
-                Selecciona una habitación
-              </option>
-
-              {rooms.map((item) => (
-                <option
-                  key={item.id}
-                  value={item.id}
-                >
-                  Habitación {item.number} - ${item.price}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
             Entrada
 
             <input
@@ -165,12 +177,19 @@ function CustomerDashboard({
               type="date"
               min={today}
               value={booking.check_in}
-              onChange={(event) =>
+              onChange={(event) => {
+                const checkIn = event.target.value
+
                 setBooking({
                   ...booking,
-                  check_in: event.target.value,
+                  check_in: checkIn,
+                  // A check-out on or before the new check-in is no longer valid.
+                  check_out:
+                    booking.check_out && booking.check_out > checkIn
+                      ? booking.check_out
+                      : '',
                 })
-              }
+              }}
             />
           </label>
 
@@ -180,7 +199,8 @@ function CustomerDashboard({
             <input
               required
               type="date"
-              min={booking.check_in || today}
+              disabled={!booking.check_in}
+              min={booking.check_in ? nextDay(booking.check_in) : today}
               value={booking.check_out}
               onChange={(event) =>
                 setBooking({
@@ -191,14 +211,67 @@ function CustomerDashboard({
             />
           </label>
 
+          {!hasDates ? (
+            <p className="booking-hint">
+              Elige tus fechas para ver las habitaciones libres.
+            </p>
+          ) : rooms.length === 0 ? (
+            <p className="booking-hint">
+              No hay habitaciones libres en esas fechas.
+            </p>
+          ) : (
+            <label>
+              Habitación
+
+              <select
+                required
+                value={booking.room_id}
+                onChange={(event) =>
+                  setBooking({
+                    ...booking,
+                    room_id: event.target.value,
+                  })
+                }
+              >
+                <option value="">
+                  Selecciona una habitación
+                </option>
+
+                {rooms.map((item) => (
+                  <option
+                    key={item.id}
+                    value={item.id}
+                  >
+                    Habitación {item.number} · {item.type} ·{' '}
+                    {money(item.price)} / noche
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {selectedRoom && bookingNights > 0 && (
+            <p className="booking-total">
+              {bookingNights} noches × {money(selectedRoom.price)}
+              <strong>
+                Total: {money(selectedRoom.price * bookingNights)}
+              </strong>
+            </p>
+          )}
+
           <button
             className="simple-button"
-            disabled={busy}
+            disabled={busy || !hasDates || !selectedRoom}
           >
             {busy
-              ? 'Reservando...'
-              : 'Confirmar reservación'}
+              ? 'Procesando...'
+              : 'Reservar y pagar'}
           </button>
+
+          <small className="booking-note">
+            Serás redirigido a Stripe para pagar con tarjeta. Las fechas
+            se apartan mientras completas el pago.
+          </small>
         </form>
       </section>
 
@@ -217,6 +290,11 @@ function CustomerDashboard({
             const price = Number(
               item.room?.price || 0
             )
+
+            const status = reservationStatus(item)
+            const canPay = isPaymentWindowOpen(item)
+            const isActive =
+              item.status === 'confirmed' || canPay
 
             return (
               <article key={item.id}>
@@ -243,18 +321,36 @@ function CustomerDashboard({
 
                 <div>
                   <span
-                    className={`simple-status ${
-                      item.status === 'confirmed'
-                        ? 'available'
-                        : 'inactive'
-                    }`}
+                    className={`simple-status ${status.tone}`}
                   >
-                    {item.status}
+                    {status.label}
                   </span>
 
-                  {item.status !== 'cancelled' && (
+                  <span className="payment-status">
+                    {paymentStatusLabel(item.latest_payment)}
+                  </span>
+
+                  {canPay && item.expires_at && (
+                    <small>
+                      Paga antes de las{' '}
+                      {formatTime(item.expires_at)}
+                    </small>
+                  )}
+
+                  {canPay && (
+                    <button
+                      className="simple-button"
+                      disabled={busy}
+                      onClick={() => payReservation(item)}
+                    >
+                      Pagar ahora
+                    </button>
+                  )}
+
+                  {isActive && (
                     <button
                       className="simple-danger"
+                      disabled={busy}
                       onClick={() =>
                         cancelReservation(item.id)
                       }

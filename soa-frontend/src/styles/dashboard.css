@@ -43,9 +43,150 @@ button {
   border-bottom: 1px solid #d9dcd5;
 }
 
-.simple-nav strong {
+.simple-nav > strong {
   font-size: 17px;
   font-weight: 600;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.notification-bell {
+  position: relative;
+}
+
+.notification-trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #d9dcd5;
+  border-radius: 50%;
+  color: #3f4842;
+  background: #fff;
+}
+
+.notification-trigger:hover,
+.notification-trigger[aria-expanded='true'] {
+  color: #235b46;
+  border-color: #235b46;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 2px solid #fff;
+  border-radius: 9px;
+  color: #fff;
+  background: #ad4d3d;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+.notification-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  border: 1px solid #d9dcd5;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 12px 32px #1e302522;
+}
+
+.notification-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7e2;
+}
+
+.notification-panel-header strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.notification-empty {
+  padding: 28px 16px;
+  color: #68706a;
+  font-size: 13px;
+  text-align: center;
+}
+
+.notification-list {
+  max-height: 380px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.notification-list li + li {
+  border-top: 1px solid #eef0ec;
+}
+
+.notification-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 16px 12px 22px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+}
+
+.notification-item.unread {
+  position: relative;
+  background: #f3f8f4;
+  cursor: pointer;
+}
+
+.notification-item.unread::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #235b46;
+}
+
+.notification-item.unread:hover {
+  background: #e8f1ea;
+}
+
+.notification-item strong {
+  color: #202522;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notification-item span {
+  color: #4e5751;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.notification-item small {
+  color: #8a918b;
+  font-size: 11px;
 }
 
 .simple-heading {
@@ -337,7 +478,7 @@ tbody tr:hover {
     margin-top: 20px;
   }
 
-  .simple-nav strong {
+  .simple-nav > strong {
     font-size: 15px;
   }
 
@@ -483,6 +624,41 @@ tbody tr:hover {
   font-weight: 600;
 } 
 
+.booking-hint {
+  padding: 12px;
+  border: 1px dashed #cfd5ce;
+  border-radius: 3px;
+  color: #68706a;
+  font-size: 13px;
+  text-align: center;
+}
+
+.booking-card input:disabled,
+.simple-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.booking-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  color: #68706a;
+  font-size: 13px;
+}
+
+.booking-total strong {
+  color: #235b46;
+  font-size: 18px;
+}
+
+.booking-note {
+  color: #68706a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .customer-history {
   margin-top: 42px;
 }
@@ -503,8 +679,24 @@ tbody tr:hover {
 
 .customer-history article div:last-child {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 18px;
+  gap: 12px 18px;
+}
+
+.customer-history article div:last-child small {
+  color: #8a581b;
+  font-size: 12px;
+}
+
+.customer-history article div:last-child .simple-button {
+  width: auto;
+  padding: 8px 14px;
+}
+
+.customer-history article .payment-status {
+  margin-top: 0;
 }
 
 .customer-history article strong,
@@ -598,8 +790,14 @@ tbody tr:hover {
 
 .admin-reservation-list article > div:last-child {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 18px;
+  gap: 12px 18px;
+}
+
+.admin-reservation-list article > div:last-child span {
+  margin-top: 0;
 }
 
 @media (max-width: 700px) {

@@ -1,3 +1,4 @@
+import NotificationBell from './NotificationBell.jsx'
 import RoomModal from './RoomModal.jsx'
 import AdminReservations from './AdminReservations.jsx'
 
@@ -13,23 +14,29 @@ function AdminDashboard({
   saveRoom,
   deleteRoom,
   cancelReservation,
+  registerCashPayment,
   setModalOpen,
   message,
   error,
   busy,
   logout,
+  notificationProps,
 }) {
   return (
     <main className="simple-app">
       <header className="simple-nav">
         <strong>Gestión de habitaciones</strong>
 
-        <button
-          className="simple-link"
-          onClick={logout}
-        >
-          Cerrar sesión
-        </button>
+        <div className="nav-actions">
+          <NotificationBell {...notificationProps} />
+
+          <button
+            className="simple-link"
+            onClick={logout}
+          >
+            Cerrar sesión
+          </button>
+        </div>
       </header>
 
       <section className="simple-heading">
@@ -153,6 +160,7 @@ function AdminDashboard({
       <AdminReservations
         reservations={reservations}
         cancelReservation={cancelReservation}
+        registerCashPayment={registerCashPayment}
         busy={busy}
       />
     </main>
