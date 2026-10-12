@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,8 +25,13 @@ class ReservationTest extends TestCase
 
         $createResponse
             ->assertCreated()
-            ->assertJsonPath('status', 'confirmed')
-            ->assertJsonPath('room.id', $room->id);
+            ->assertJsonPath('status', 'pending')
+            ->assertJsonPath('room.id', $room->id)
+            ->assertJsonPath('latest_payment.status', 'pending')
+            ->assertJsonPath('latest_payment.amount', '627.50');
+
+        $this->assertNotNull($createResponse->json('latest_payment.checkout_url'));
+        $this->assertNotNull($createResponse->json('expires_at'));
 
         $reservationId = $createResponse->json('id');
 
@@ -35,17 +41,10 @@ class ReservationTest extends TestCase
             ->assertJsonPath('check_in', '2026-11-10');
 
         $this->actingAs($user)
-            ->patchJson("/api/reservations/{$reservationId}/dates", [
-                'check_in' => '2026-11-12',
-                'check_out' => '2026-11-18',
-            ])
-            ->assertOk()
-            ->assertJsonPath('check_out', '2026-11-18');
-
-        $this->actingAs($user)
             ->patchJson("/api/reservations/{$reservationId}/cancel")
             ->assertOk()
-            ->assertJsonPath('status', 'cancelled');
+            ->assertJsonPath('status', 'cancelled')
+            ->assertJsonPath('latest_payment.status', 'failed');
 
         $this->actingAs($user)
             ->getJson('/api/reservations')
@@ -170,6 +169,82 @@ class ReservationTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Room is not available for reservations.');
+    }
+
+    public function test_dates_can_be_changed_when_there_is_no_payment(): void
+    {
+        $user = User::factory()->create();
+        $reservation = $this->reservationFor($user);
+
+        $this->actingAs($user)
+            ->patchJson("/api/reservations/{$reservation->id}/dates", [
+                'check_in' => now()->addDays(5)->toDateString(),
+                'check_out' => now()->addDays(8)->toDateString(),
+            ])
+            ->assertOk()
+            ->assertJsonPath('check_out', now()->addDays(8)->toDateString());
+    }
+
+    public function test_dates_cannot_be_changed_while_a_payment_is_in_progress(): void
+    {
+        $user = User::factory()->create();
+        $room = $this->availableRoom();
+        $reservationId = $this->actingAs($user)->postJson('/api/reservations', [
+            'room_id' => $room->id,
+            'check_in' => now()->addDay()->toDateString(),
+            'check_out' => now()->addDays(3)->toDateString(),
+        ])->json('id');
+
+        $this->actingAs($user)
+            ->patchJson("/api/reservations/{$reservationId}/dates", [
+                'check_in' => now()->addDays(5)->toDateString(),
+                'check_out' => now()->addDays(8)->toDateString(),
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_unpaid_reservation_releases_its_dates_after_the_hold_expires(): void
+    {
+        $room = $this->availableRoom();
+        $dates = [
+            'room_id' => $room->id,
+            'check_in' => now()->addDays(3)->toDateString(),
+            'check_out' => now()->addDays(5)->toDateString(),
+        ];
+        $first = User::factory()->create();
+        $reservationId = $this->actingAs($first)->postJson('/api/reservations', $dates)->json('id');
+        $second = User::factory()->create();
+
+        $this->actingAs($second)
+            ->postJson('/api/reservations', $dates)
+            ->assertStatus(422);
+
+        $this->travel(Reservation::holdMinutes() + Reservation::EXPIRATION_GRACE_MINUTES + 1)->minutes();
+
+        $this->actingAs($second)
+            ->postJson('/api/reservations', $dates)
+            ->assertCreated();
+
+        $expired = Reservation::find($reservationId);
+        $this->assertSame('expired', $expired->status);
+        $this->assertSame('failed', $expired->latestPayment->status);
+    }
+
+    public function test_pending_reservation_keeps_its_dates_during_the_grace_period(): void
+    {
+        $room = $this->availableRoom();
+        $dates = [
+            'room_id' => $room->id,
+            'check_in' => now()->addDays(3)->toDateString(),
+            'check_out' => now()->addDays(5)->toDateString(),
+        ];
+        $this->actingAs(User::factory()->create())->postJson('/api/reservations', $dates);
+
+        $this->travel(Reservation::holdMinutes() + 1)->minutes();
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/api/reservations', $dates)
+            ->assertStatus(422);
     }
 
     private function reservationFor(User $user)

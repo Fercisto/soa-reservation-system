@@ -32,7 +32,10 @@ export class ReservationsResolver {
     return this.reservationsService.findOne(id, token);
   }
 
-  @Mutation(() => Reservation)
+  @Mutation(() => Reservation, {
+    description:
+      'Creates a pending reservation and its Stripe checkout (latest_payment.checkout_url)',
+  })
   async createReservation(
     @Args('input') input: CreateReservationInput,
     @CurrentAuthToken() token?: string,

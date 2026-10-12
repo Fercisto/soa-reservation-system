@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Reservation;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -23,12 +24,14 @@ class RoomController extends Controller
         $checkIn = $validated['check_in'] ?? null;
         $checkOut = $validated['check_out'] ?? null;
 
+        Reservation::expireStale();
+
         return response()->json(
             Room::query()
                 ->where('status', 'available')
                 ->when($checkIn && $checkOut, function ($query) use ($checkIn, $checkOut) {
                     $query->whereDoesntHave('reservations', function ($query) use ($checkIn, $checkOut) {
-                        $query->where('status', '!=', 'cancelled')
+                        $query->whereIn('status', Reservation::ACTIVE_STATUSES)
                             ->where('check_in', '<', $checkOut)
                             ->where('check_out', '>', $checkIn);
                     });

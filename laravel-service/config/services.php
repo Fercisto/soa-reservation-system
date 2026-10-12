@@ -28,6 +28,20 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'payments' => [
+        'driver' => env('PAYMENT_DRIVER', 'stripe'),
+        'currency' => env('PAYMENT_CURRENCY', 'mxn'),
+        // Minutes a pending reservation holds its dates while the customer pays.
+        // Stripe Checkout sessions must stay open at least 30 minutes.
+        'hold_minutes' => (int) env('PAYMENT_HOLD_MINUTES', 35),
+        'frontend_url' => rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
