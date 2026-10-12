@@ -20,8 +20,12 @@ export class RoomsService {
     return this.request('get', '/rooms');
   }
 
-  async findAvailable() {
-    return this.request('get', '/rooms/available');
+  async findAvailable(checkIn?: string, checkOut?: string) {
+    const query =
+      checkIn && checkOut
+        ? `?${new URLSearchParams({ check_in: checkIn, check_out: checkOut })}`
+        : '';
+    return this.request('get', `/rooms/available${query}`);
   }
 
   async findOne(id: string) {

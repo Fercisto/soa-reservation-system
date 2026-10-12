@@ -1,4 +1,8 @@
-function AdminReservations({ reservations }) {
+function AdminReservations({
+  reservations,
+  cancelReservation,
+  busy,
+}) {
   const activeReservations = reservations.filter(
     (reservation) => reservation.status !== 'cancelled'
   )
@@ -47,6 +51,16 @@ function AdminReservations({ reservations }) {
                 <b className="simple-status confirmed">
                   {reservation.status}
                 </b>
+
+                <button
+                  className="simple-danger"
+                  disabled={busy}
+                  onClick={() =>
+                    cancelReservation(reservation.id)
+                  }
+                >
+                  Cancelar
+                </button>
               </div>
             </article>
           ))}

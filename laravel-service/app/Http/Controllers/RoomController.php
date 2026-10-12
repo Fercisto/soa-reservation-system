@@ -13,13 +13,25 @@ class RoomController extends Controller
         return response()->json(Room::query()->latest()->get());
     }
 
-    public function available()
+    public function available(Request $request)
     {
+        $validated = $request->validate([
+            'check_in' => 'nullable|required_with:check_out|date_format:Y-m-d',
+            'check_out' => 'nullable|required_with:check_in|date_format:Y-m-d|after:check_in',
+        ]);
+
+        $checkIn = $validated['check_in'] ?? null;
+        $checkOut = $validated['check_out'] ?? null;
+
         return response()->json(
             Room::query()
                 ->where('status', 'available')
-                ->whereDoesntHave('reservations', function ($query) {
-                    $query->where('status', '!=', 'cancelled');
+                ->when($checkIn && $checkOut, function ($query) use ($checkIn, $checkOut) {
+                    $query->whereDoesntHave('reservations', function ($query) use ($checkIn, $checkOut) {
+                        $query->where('status', '!=', 'cancelled')
+                            ->where('check_in', '<', $checkOut)
+                            ->where('check_out', '>', $checkIn);
+                    });
                 })
                 ->latest()
                 ->get()

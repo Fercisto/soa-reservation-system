@@ -55,6 +55,36 @@ class RoomTest extends TestCase
             ->assertJsonPath('0.number', '201');
     }
 
+    public function test_reserved_room_stays_available_outside_its_reserved_dates(): void
+    {
+        $room = Room::create([
+            'number' => '501',
+            'type' => 'double',
+            'price' => 100,
+            'capacity' => 2,
+            'status' => 'available',
+        ]);
+        $room->reservations()->create([
+            'user_id' => User::factory()->create()->id,
+            'check_in' => '2026-12-10',
+            'check_out' => '2026-12-15',
+            'status' => 'confirmed',
+        ]);
+
+        $this->getJson('/api/rooms/available')
+            ->assertOk()
+            ->assertJsonCount(1);
+
+        $this->getJson('/api/rooms/available?check_in=2026-12-12&check_out=2026-12-18')
+            ->assertOk()
+            ->assertJsonCount(0);
+
+        $this->getJson('/api/rooms/available?check_in=2026-12-15&check_out=2026-12-18')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.number', '501');
+    }
+
     public function test_authenticated_user_can_change_room_status(): void
     {
         $room = Room::create([

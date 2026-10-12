@@ -6,6 +6,7 @@ import CustomerDashboard from '../components/CustomerDashboard.jsx'
 import {
   graphqlRequest,
   loginRequest,
+  logoutRequest,
   registerRequest,
 } from '../services/api.js'
 
@@ -80,7 +81,16 @@ function Dashboard() {
   }, [session, isAdmin])
 
   async function gql(query, variables = {}) {
-    return graphqlRequest(query, variables, session?.token)
+    try {
+      return await graphqlRequest(query, variables, session?.token)
+    } catch (err) {
+      if (session && err.code === 'UNAUTHENTICATED') {
+        clearSession()
+        throw new Error('Tu sesión expiró. Inicia sesión de nuevo.')
+      }
+
+      throw err
+    }
   }
 
   async function loadRooms() {
@@ -248,15 +258,30 @@ function Dashboard() {
     }
   }
 
-  function logout() {
+  async function logout() {
+    setBusy(true)
+
+    try {
+      await logoutRequest(session?.token)
+    } catch {
+      // The token may already be invalid; the local session is cleared anyway.
+    } finally {
+      setBusy(false)
+    }
+
+    clearSession()
+    setMessage('')
+    setError('')
+  }
+
+  function clearSession() {
     localStorage.removeItem('soa-session')
 
     setSession(null)
     setRooms([])
     setReservations([])
     setBooking(EMPTY_BOOKING)
-    setMessage('')
-    setError('')
+    setModalOpen(false)
     setCustomerDataReady(false)
   }
 
@@ -441,7 +466,11 @@ function Dashboard() {
 
       setMessage('Reservación cancelada correctamente.')
 
-      await loadCustomerData()
+      if (isAdmin) {
+        await loadReservations()
+      } else {
+        await loadCustomerData()
+      }
     } catch (err) {
       showError(err.message)
     } finally {
@@ -506,6 +535,7 @@ function Dashboard() {
         openEditModal={openEditModal}
         saveRoom={saveRoom}
         deleteRoom={deleteRoom}
+        cancelReservation={cancelReservation}
         setModalOpen={setModalOpen}
         message={message}
         error={error}

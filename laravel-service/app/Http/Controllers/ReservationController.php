@@ -24,7 +24,7 @@ class ReservationController extends Controller
     public function show(Request $request, Reservation $reservation)
     {
         return response()->json(
-            $this->ownedReservation($request, $reservation)->load('room')
+            $this->ownedReservation($request, $reservation)->load(['room', 'user'])
         );
     }
 
@@ -73,6 +73,12 @@ class ReservationController extends Controller
             'check_out' => 'required|date_format:Y-m-d|after:check_in',
         ]);
 
+        if ($reservation->room->status !== 'available') {
+            return response()->json([
+                'message' => 'Room is not available for reservations.',
+            ], 422);
+        }
+
         if ($this->hasDateConflict(
             $reservation->room_id,
             $validated['check_in'],
@@ -106,7 +112,10 @@ class ReservationController extends Controller
 
     private function ownedReservation(Request $request, Reservation $reservation): Reservation
     {
-        abort_unless($reservation->user_id === $request->user()->id, 404);
+        abort_unless(
+            $request->user()->role === 'admin' || $reservation->user_id === $request->user()->id,
+            404
+        );
 
         return $reservation;
     }

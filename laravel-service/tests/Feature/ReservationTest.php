@@ -132,6 +132,56 @@ class ReservationTest extends TestCase
             ->assertJsonValidationErrors('check_in');
     }
 
+    public function test_admin_can_view_and_cancel_any_reservation(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $reservation = $this->reservationFor(User::factory()->create(['role' => 'customer']));
+
+        $this->actingAs($admin)
+            ->getJson("/api/reservations/{$reservation->id}")
+            ->assertOk()
+            ->assertJsonPath('id', $reservation->id);
+
+        $this->actingAs($admin)
+            ->patchJson("/api/reservations/{$reservation->id}/cancel")
+            ->assertOk()
+            ->assertJsonPath('status', 'cancelled');
+    }
+
+    public function test_customer_cannot_access_another_customers_reservation(): void
+    {
+        $reservation = $this->reservationFor(User::factory()->create());
+
+        $this->actingAs(User::factory()->create())
+            ->getJson("/api/reservations/{$reservation->id}")
+            ->assertNotFound();
+    }
+
+    public function test_user_cannot_move_reservation_when_room_is_not_available(): void
+    {
+        $user = User::factory()->create();
+        $reservation = $this->reservationFor($user);
+        $reservation->room->update(['status' => 'maintenance']);
+
+        $this->actingAs($user)
+            ->patchJson("/api/reservations/{$reservation->id}/dates", [
+                'check_in' => now()->addDays(5)->toDateString(),
+                'check_out' => now()->addDays(7)->toDateString(),
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Room is not available for reservations.');
+    }
+
+    private function reservationFor(User $user)
+    {
+        return $user->reservations()->create([
+            'room_id' => $this->availableRoom()->id,
+            'check_in' => now()->addDay()->toDateString(),
+            'check_out' => now()->addDays(3)->toDateString(),
+            'status' => 'confirmed',
+        ]);
+    }
+
     private function availableRoom(): Room
     {
         return Room::create([

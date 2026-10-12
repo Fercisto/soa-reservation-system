@@ -17,8 +17,11 @@ export class RoomsResolver {
   }
 
   @Query(() => [Room], { name: 'availableRooms' })
-  async getAvailableRooms(): Promise<Room[]> {
-    return this.roomsService.findAvailable();
+  async getAvailableRooms(
+    @Args('checkIn', { nullable: true }) checkIn?: string,
+    @Args('checkOut', { nullable: true }) checkOut?: string,
+  ): Promise<Room[]> {
+    return this.roomsService.findAvailable(checkIn, checkOut);
   }
 
   @Query(() => Room, { name: 'room', nullable: true })

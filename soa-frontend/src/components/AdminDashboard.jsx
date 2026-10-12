@@ -12,6 +12,7 @@ function AdminDashboard({
   openEditModal,
   saveRoom,
   deleteRoom,
+  cancelReservation,
   setModalOpen,
   message,
   error,
@@ -151,6 +152,8 @@ function AdminDashboard({
 
       <AdminReservations
         reservations={reservations}
+        cancelReservation={cancelReservation}
+        busy={busy}
       />
     </main>
   )

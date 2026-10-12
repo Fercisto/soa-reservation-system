@@ -18,7 +18,9 @@ export async function graphqlRequest(query, variables = {}, token = null) {
       result?.errors?.[0]?.message ||
       result?.message ||
       'No se pudo completar la solicitud GraphQL.'
-    throw new Error(errorMsg)
+    const error = new Error(errorMsg)
+    error.code = result?.errors?.[0]?.code
+    throw error
   }
 
   return result.data
@@ -44,6 +46,20 @@ export async function loginRequest(login) {
   )
 
   return data.login
+}
+
+export async function logoutRequest(token) {
+  const data = await graphqlRequest(
+    `
+    mutation Logout {
+      logout
+    }
+  `,
+    {},
+    token
+  )
+
+  return data.logout
 }
 
 export async function registerRequest(registration) {
