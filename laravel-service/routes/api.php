@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ExternalNotificationController;
+use App\Http\Controllers\ExternalPaymentController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RoomController;
@@ -20,6 +22,22 @@ Route::get('/rooms/available', [RoomController::class, 'available']);
 Route::get('/rooms/{room}', [RoomController::class, 'show']);
 
 Route::post('/payments/webhook', [PaymentController::class, 'webhook']);
+
+// Generic payments and notifications APIs for external systems, authenticated with the X-Api-Key header.
+Route::prefix('v1')->middleware('api.client')->group(function () {
+    Route::get('/payments', [ExternalPaymentController::class, 'index']);
+    Route::post('/payments', [ExternalPaymentController::class, 'store']);
+    Route::get('/payments/{payment}', [ExternalPaymentController::class, 'show'])->whereNumber('payment');
+    Route::post('/payments/{payment}/verify', [ExternalPaymentController::class, 'verify'])->whereNumber('payment');
+    Route::post('/payments/{payment}/cancel', [ExternalPaymentController::class, 'cancel'])->whereNumber('payment');
+    Route::post('/payments/{payment}/refund', [ExternalPaymentController::class, 'refund'])->whereNumber('payment');
+
+    Route::get('/notifications', [ExternalNotificationController::class, 'index']);
+    Route::post('/notifications', [ExternalNotificationController::class, 'store']);
+    Route::patch('/notifications/read-all', [ExternalNotificationController::class, 'markAllAsRead']);
+    Route::get('/notifications/{notification}', [ExternalNotificationController::class, 'show'])->whereUuid('notification');
+    Route::patch('/notifications/{notification}/read', [ExternalNotificationController::class, 'markAsRead'])->whereUuid('notification');
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);

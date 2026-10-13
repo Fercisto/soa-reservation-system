@@ -11,10 +11,6 @@ use Illuminate\Support\Str;
  */
 class FakeGateway implements PaymentGateway
 {
-    public function __construct(private readonly string $frontendUrl)
-    {
-    }
-
     public function name(): string
     {
         return 'fake';
@@ -22,11 +18,7 @@ class FakeGateway implements PaymentGateway
 
     public function createCheckout(Payment $payment): GatewayResult
     {
-        return new GatewayResult(
-            'fake_'.Str::uuid(),
-            'pending',
-            "{$this->frontendUrl}/?payment=success&payment_id={$payment->id}"
-        );
+        return new GatewayResult('fake_'.Str::uuid(), 'pending', $payment->success_url);
     }
 
     public function retrieve(Payment $payment): GatewayResult

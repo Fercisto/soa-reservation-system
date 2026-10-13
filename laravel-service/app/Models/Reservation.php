@@ -114,13 +114,26 @@ class Reservation extends Model
             $this->update(['expires_at' => now()->addMinutes(self::holdMinutes())]);
         }
 
+        $this->loadMissing(['room', 'user']);
+
         $payment = $this->payments()->create([
             'user_id' => $this->user_id,
+            'description' => "Habitación {$this->room->number} ({$this->room->type}), "
+                ."del {$this->check_in->toDateString()} al {$this->check_out->toDateString()}",
+            'customer_email' => $this->user->email,
             'amount' => $this->totalAmount(),
             'currency' => config('services.payments.currency'),
             'method' => 'card',
             'status' => 'pending',
             'provider' => $gateway->name(),
+            'expires_at' => $this->expires_at,
+        ]);
+
+        // The frontend needs the payment id to verify or cancel it when Stripe sends the customer back.
+        $frontendUrl = config('services.payments.frontend_url');
+        $payment->update([
+            'success_url' => "{$frontendUrl}/?payment=success&payment_id={$payment->id}",
+            'cancel_url' => "{$frontendUrl}/?payment=cancelled&payment_id={$payment->id}",
         ]);
 
         try {

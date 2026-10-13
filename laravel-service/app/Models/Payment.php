@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\ReservationNotifier;
+use App\Payments\ClientCallback;
 use App\Payments\GatewayResult;
 use App\Payments\PaymentGateway;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,10 @@ class Payment extends Model
     protected $fillable = [
         'reservation_id',
         'user_id',
+        'api_client_id',
+        'external_reference',
+        'description',
+        'customer_email',
         'amount',
         'currency',
         'method',
@@ -30,6 +35,9 @@ class Payment extends Model
         'provider_reference',
         'provider_payment_intent',
         'checkout_url',
+        'success_url',
+        'cancel_url',
+        'expires_at',
         'paid_at',
     ];
 
@@ -42,7 +50,18 @@ class Payment extends Model
         return [
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
+            'expires_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // External systems learn about status changes through their callback URL.
+        static::updated(function (Payment $payment) {
+            if ($payment->api_client_id && $payment->wasChanged('status')) {
+                DB::afterCommit(fn () => ClientCallback::send($payment));
+            }
+        });
     }
 
     public function reservation(): BelongsTo
@@ -53,6 +72,31 @@ class Payment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function apiClient(): BelongsTo
+    {
+        return $this->belongsTo(ApiClient::class);
+    }
+
+    /**
+     * Public representation used by the external payments API and its callbacks.
+     */
+    public function toExternalArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'reference' => $this->external_reference,
+            'description' => $this->description,
+            'amount' => (float) $this->amount,
+            'currency' => $this->currency,
+            'status' => $this->status,
+            'customer_email' => $this->customer_email,
+            'checkout_url' => $this->status === 'pending' ? $this->checkout_url : null,
+            'paid_at' => $this->paid_at?->toISOString(),
+            'created_at' => $this->created_at?->toISOString(),
+            'updated_at' => $this->updated_at?->toISOString(),
+        ];
     }
 
     /**
@@ -114,7 +158,7 @@ class Payment extends Model
                 'paid_at' => now(),
             ]);
 
-            if ($this->reservation->status !== 'pending') {
+            if ($this->reservation?->status !== 'pending') {
                 return false;
             }
 
@@ -143,6 +187,10 @@ class Payment extends Model
     private function releaseReservationIfUnpaid(): void
     {
         $reservation = $this->reservation;
+
+        if (! $reservation) {
+            return;
+        }
 
         $hasOpenPayments = $reservation->payments()
             ->whereIn('status', ['pending', 'paid'])

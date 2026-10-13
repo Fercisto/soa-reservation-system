@@ -29,7 +29,9 @@ class PaymentController extends Controller
             ? Payment::query()->with(['reservation.room', 'user'])
             : $request->user()->payments()->with('reservation.room');
 
+        // External systems' payments are served by the /v1/payments API, not here.
         $payments = $query
+            ->whereNotNull('reservation_id')
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($validated['reservation_id'] ?? null, fn ($query, $id) => $query->where('reservation_id', $id))
             ->latest()
@@ -167,8 +169,10 @@ class PaymentController extends Controller
     private function ownedPayment(Request $request, Payment $payment): Payment
     {
         abort_unless(
-            $request->user()->role === 'admin' || $payment->user_id === $request->user()->id,
-            404
+            $payment->reservation_id
+                && ($request->user()->role === 'admin' || $payment->user_id === $request->user()->id),
+            404,
+            'Payment not found.'
         );
 
         return $payment;

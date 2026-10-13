@@ -16,14 +16,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(PaymentGateway::class, function () {
-            $frontendUrl = config('services.payments.frontend_url');
-
             return match (config('services.payments.driver')) {
-                'fake' => new FakeGateway($frontendUrl),
+                'fake' => new FakeGateway(),
                 default => new StripeGateway(
                     new StripeClient(['api_key' => config('services.stripe.secret') ?: null]),
                     config('services.stripe.webhook_secret'),
-                    $frontendUrl
                 ),
             };
         });
