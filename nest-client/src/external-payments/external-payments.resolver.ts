@@ -5,7 +5,9 @@ import { ApiKey, ApiKeyGuard } from '../common/api-key.guard.js';
 import { ExternalPaymentsService } from './external-payments.service.js';
 import {
   CreateExternalPaymentInput,
+  ExternalClientSettings,
   ExternalPayment,
+  UpdateExternalClientSettingsInput,
 } from './external-payment.model.js';
 
 /**
@@ -17,8 +19,28 @@ import {
 export class ExternalPaymentsResolver {
   constructor(private readonly paymentsService: ExternalPaymentsService) {}
 
+  @Query(() => ExternalClientSettings, {
+    description: 'Settings of the calling system; secrets are never returned',
+  })
+  externalClientSettings(
+    @ApiKey() apiKey: string,
+  ): Promise<ExternalClientSettings> {
+    return this.paymentsService.getSettings(apiKey);
+  }
+
+  @Mutation(() => ExternalClientSettings, {
+    description:
+      'Registers the Stripe secret key of your own account (required before creating payments) and/or your callback URL',
+  })
+  updateExternalClientSettings(
+    @Args('input') input: UpdateExternalClientSettingsInput,
+    @ApiKey() apiKey: string,
+  ): Promise<ExternalClientSettings> {
+    return this.paymentsService.updateSettings(input, apiKey);
+  }
+
   @Query(() => [ExternalPayment], {
-    description: "Payments of the calling system (identified by X-Api-Key)",
+    description: 'Payments of the calling system (identified by X-Api-Key)',
   })
   externalPayments(
     @ApiKey() apiKey: string,

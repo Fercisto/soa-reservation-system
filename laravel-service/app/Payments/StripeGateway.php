@@ -3,12 +3,17 @@
 namespace App\Payments;
 
 use App\Models\Payment;
+use RuntimeException;
 use Stripe\Checkout\Session;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Exception\UnexpectedValueException;
 use Stripe\StripeClient;
 use Stripe\Webhook;
 
+/**
+ * Hotel payments use this service's own Stripe account. Payments of external systems
+ * use the Stripe secret key that each system registered, so money goes to its account.
+ */
 class StripeGateway implements PaymentGateway
 {
     private const WEBHOOK_EVENTS = [
@@ -60,13 +65,13 @@ class StripeGateway implements PaymentGateway
             $params['expires_at'] = $payment->expires_at->getTimestamp();
         }
 
-        return $this->resultFromSession($this->stripe->checkout->sessions->create($params));
+        return $this->resultFromSession($this->stripeFor($payment)->checkout->sessions->create($params));
     }
 
     public function retrieve(Payment $payment): GatewayResult
     {
         return $this->resultFromSession(
-            $this->stripe->checkout->sessions->retrieve($payment->provider_reference)
+            $this->stripeFor($payment)->checkout->sessions->retrieve($payment->provider_reference)
         );
     }
 
@@ -75,12 +80,12 @@ class StripeGateway implements PaymentGateway
         $paymentIntent = $payment->provider_payment_intent
             ?? $this->retrieve($payment)->paymentIntent;
 
-        $this->stripe->refunds->create(['payment_intent' => $paymentIntent]);
+        $this->stripeFor($payment)->refunds->create(['payment_intent' => $paymentIntent]);
     }
 
     public function cancelCheckout(Payment $payment): void
     {
-        $this->stripe->checkout->sessions->expire($payment->provider_reference);
+        $this->stripeFor($payment)->checkout->sessions->expire($payment->provider_reference);
     }
 
     public function parseWebhook(string $payload, ?string $signature): ?GatewayResult
@@ -106,6 +111,21 @@ class StripeGateway implements PaymentGateway
         }
 
         return $result;
+    }
+
+    private function stripeFor(Payment $payment): StripeClient
+    {
+        if (! $payment->api_client_id) {
+            return $this->stripe;
+        }
+
+        $secret = $payment->apiClient?->stripe_secret;
+
+        if (! $secret) {
+            throw new RuntimeException('The API client has no Stripe secret key configured.');
+        }
+
+        return new StripeClient(['api_key' => $secret]);
     }
 
     private function resultFromSession(Session $session): GatewayResult

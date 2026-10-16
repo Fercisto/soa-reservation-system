@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ExternalClientSettingsController;
 use App\Http\Controllers\ExternalNotificationController;
 use App\Http\Controllers\ExternalPaymentController;
 use App\Http\Controllers\NotificationController;
@@ -25,6 +26,8 @@ Route::post('/payments/webhook', [PaymentController::class, 'webhook']);
 
 // Generic payments and notifications APIs for external systems, authenticated with the X-Api-Key header.
 Route::prefix('v1')->middleware('api.client')->group(function () {
+    Route::get('/settings', [ExternalClientSettingsController::class, 'show']);
+    Route::put('/settings', [ExternalClientSettingsController::class, 'update']);
     Route::get('/payments', [ExternalPaymentController::class, 'index']);
     Route::post('/payments', [ExternalPaymentController::class, 'store']);
     Route::get('/payments/{payment}', [ExternalPaymentController::class, 'show'])->whereNumber('payment');

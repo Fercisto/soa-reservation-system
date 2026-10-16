@@ -93,6 +93,10 @@ class Payment extends Model
             'status' => $this->status,
             'customer_email' => $this->customer_email,
             'checkout_url' => $this->status === 'pending' ? $this->checkout_url : null,
+            'provider' => $this->provider,
+            // Ids in the client's own Stripe account, to find the charge in its dashboard.
+            'stripe_session_id' => $this->provider === 'stripe' ? $this->provider_reference : null,
+            'stripe_payment_intent_id' => $this->provider === 'stripe' ? $this->provider_payment_intent : null,
             'paid_at' => $this->paid_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

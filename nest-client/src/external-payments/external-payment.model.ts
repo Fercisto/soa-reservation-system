@@ -29,6 +29,22 @@ export class ExternalPayment {
   })
   checkout_url?: string;
 
+  @Field({ description: 'Payment provider, e.g. stripe' })
+  provider: string;
+
+  @Field({
+    nullable: true,
+    description: 'Checkout Session id in your own Stripe account (cs_...)',
+  })
+  stripe_session_id?: string;
+
+  @Field({
+    nullable: true,
+    description:
+      'PaymentIntent id in your own Stripe account (pi_...), once paid',
+  })
+  stripe_payment_intent_id?: string;
+
   @Field({ nullable: true })
   paid_at?: string;
 
@@ -61,4 +77,41 @@ export class CreateExternalPaymentInput {
 
   @Field({ description: 'Where Stripe sends the customer if they cancel' })
   cancel_url: string;
+}
+
+@ObjectType()
+export class ExternalClientSettings {
+  @Field()
+  name: string;
+
+  @Field({ nullable: true })
+  callback_url?: string;
+
+  @Field({ description: 'Whether your Stripe secret key is registered' })
+  stripe_configured: boolean;
+
+  @Field({ nullable: true, description: 'test | live' })
+  stripe_mode?: string;
+
+  @Field({
+    nullable: true,
+    description: 'Last 4 characters of your Stripe secret key',
+  })
+  stripe_key_last4?: string;
+}
+
+@InputType()
+export class UpdateExternalClientSettingsInput {
+  @Field({
+    nullable: true,
+    description:
+      'Secret key of your own Stripe account (sk_test_... or sk_live_...)',
+  })
+  stripe_secret_key?: string;
+
+  @Field({
+    nullable: true,
+    description: 'URL of your server that receives payment callbacks',
+  })
+  callback_url?: string;
 }

@@ -11,7 +11,8 @@ use Stripe\Exception\ApiErrorException;
 
 /**
  * Generic payments API for external systems. It knows nothing about reservations:
- * the client sends its own reference, description and amount.
+ * the client sends its own reference, description and amount, and is charged
+ * through its own Stripe account (registered with PUT /v1/settings).
  */
 class ExternalPaymentController extends Controller
 {
@@ -50,6 +51,12 @@ class ExternalPaymentController extends Controller
         ]);
 
         $client = $this->client($request);
+
+        if ($this->gateway->name() === 'stripe' && ! $client->hasStripeAccount()) {
+            return response()->json([
+                'message' => 'Register your Stripe secret key first (PUT /v1/settings).',
+            ], 422);
+        }
 
         // Idempotent by reference: retrying the same order returns its open or paid payment.
         $existing = $client->payments()

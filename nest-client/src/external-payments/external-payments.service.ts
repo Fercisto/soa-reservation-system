@@ -2,7 +2,10 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 
-import { CreateExternalPaymentInput } from './external-payment.model.js';
+import {
+  CreateExternalPaymentInput,
+  UpdateExternalClientSettingsInput,
+} from './external-payment.model.js';
 
 export interface ExternalPaymentFilters {
   reference?: string;
@@ -15,6 +18,17 @@ export class ExternalPaymentsService {
     process.env.AUTH_SERVICE_URL || 'http://127.0.0.1:8000/api';
 
   constructor(private readonly httpService: HttpService) {}
+
+  async getSettings(apiKey: string) {
+    return this.request('get', '/v1/settings', apiKey);
+  }
+
+  async updateSettings(
+    input: UpdateExternalClientSettingsInput,
+    apiKey: string,
+  ) {
+    return this.request('put', '/v1/settings', apiKey, input);
+  }
 
   async findAll(filters: ExternalPaymentFilters, apiKey: string) {
     return this.request('get', '/v1/payments', apiKey, undefined, filters);
@@ -41,7 +55,7 @@ export class ExternalPaymentsService {
   }
 
   private async request(
-    method: 'get' | 'post',
+    method: 'get' | 'post' | 'put',
     path: string,
     apiKey: string,
     body?: unknown,
@@ -56,7 +70,7 @@ export class ExternalPaymentsService {
       const response = await firstValueFrom(
         method === 'get'
           ? this.httpService.get(url, config)
-          : this.httpService.post(url, body, config),
+          : this.httpService[method](url, body, config),
       );
 
       return response.data;
