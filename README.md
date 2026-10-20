@@ -226,6 +226,38 @@ React bell ──GraphQL──▶ NestJS ──REST──▶ GET /api/notificati
 
 The classes are in `laravel-service/app/Notifications`: `ReservationConfirmed`, `ReservationCancelled` and `ReservationNotifier`, which decides who receives each notification.
 
+## External services consumed (restaurant system)
+
+The hotel consumes two services of a classmate's restaurant system (Java microservices). They are multi-tenant: the hotel identifies itself with an API key and only sees and manages its own data.
+
+| Service | Port | Used for |
+| ------- | ---- | -------- |
+| `menu-service` | 8083 | Hotel restaurant menu: categories and dishes |
+| `employee-service` | 8084 | Hotel staff and their shifts |
+
+```text
+React ──GraphQL──▶ NestJS ──REST + X-Api-Key──▶ menu-service / employee-service
+```
+
+NestJS calls them from `src/restaurant` and exposes:
+
+| Type | Operation | Who |
+| ---- | --------- | --- |
+| Query | `menuCategories`, `menuDishes(categoryId)` | Any signed-in user |
+| Mutation | `createMenuCategory`, `updateMenuCategory`, `deleteMenuCategory`, `createDish`, `updateDish`, `deleteDish` | Admin |
+| Query | `employees(role, shift, active)`, `employeeRoles`, `employeeShifts` | Admin |
+| Mutation | `createEmployee`, `updateEmployee`, `deleteEmployee` | Admin |
+
+The frontend shows them in the admin panel (tabs **Menú** and **Personal**) and in the customer panel (section **Restaurante**, available dishes only).
+
+Configuration in `nest-client/.env` (see `nest-client/.env.example`; the file is loaded automatically and ignored by git):
+
+```env
+RESTAURANT_MENU_URL=http://<RESTAURANT-IP>:8083/api/v1/menu
+RESTAURANT_EMPLOYEES_URL=http://<RESTAURANT-IP>:8084/api/v1/employees
+RESTAURANT_API_KEY=<key provided by the restaurant system>
+```
+
 ## Running the project
 
 Requirements: PHP 8.2+, Composer, MySQL, Node.js 20+.

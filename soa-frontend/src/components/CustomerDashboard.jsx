@@ -1,4 +1,5 @@
 import NotificationBell from './NotificationBell.jsx'
+import RestaurantMenu from './RestaurantMenu.jsx'
 import {
   reservationNights,
   money,
@@ -29,6 +30,7 @@ function CustomerDashboard({
   ready,
   logout,
   notificationProps,
+  gql,
 }) {
   const currentDate = new Date()
   const today = [
@@ -364,6 +366,8 @@ function CustomerDashboard({
           })
         )}
       </section>
+
+      <RestaurantMenu gql={gql} />
     </main>
   )
 }

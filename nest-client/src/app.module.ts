@@ -10,6 +10,7 @@ import { ExternalPaymentsModule } from './external-payments/external-payments.mo
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { ReservationsModule } from './reservations/reservations.module.js';
+import { RestaurantModule } from './restaurant/restaurant.module.js';
 import { RoomsModule } from './rooms/rooms.module.js';
 
 @Module({
@@ -40,6 +41,7 @@ import { RoomsModule } from './rooms/rooms.module.js';
     NotificationsModule,
     ExternalPaymentsModule,
     ExternalNotificationsModule,
+    RestaurantModule,
   ],
   controllers: [AppController],
   providers: [AppService],

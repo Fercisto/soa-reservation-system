@@ -870,6 +870,7 @@ function Dashboard() {
         busy={busy}
         logout={logout}
         notificationProps={notificationProps}
+        gql={gql}
       />
     )
   }
@@ -889,6 +890,7 @@ function Dashboard() {
       ready={customerDataReady}
       logout={logout}
       notificationProps={notificationProps}
+      gql={gql}
     />
   )
 }
