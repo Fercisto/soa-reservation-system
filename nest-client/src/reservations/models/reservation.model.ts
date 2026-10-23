@@ -2,6 +2,7 @@ import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
 import { Room } from '../../rooms/models/room.model.js';
 import { User } from '../../auth/models/user.model.js';
 import { Payment } from '../../payments/models/payment.model.js';
+import { Invoice } from '../../invoices/models/invoice.model.js';
 
 @ObjectType()
 export class Reservation {
@@ -37,5 +38,11 @@ export class Reservation {
 
   @Field(() => Payment, { nullable: true })
   latest_payment?: Payment;
+
+  @Field(() => Invoice, {
+    nullable: true,
+    description: 'Latest invoice of the reservation, issued or cancelled',
+  })
+  invoice?: Invoice;
 }
 

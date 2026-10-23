@@ -7,6 +7,7 @@ import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ExternalNotificationsModule } from './external-notifications/external-notifications.module.js';
 import { ExternalPaymentsModule } from './external-payments/external-payments.module.js';
+import { InvoicesModule } from './invoices/invoices.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { ReservationsModule } from './reservations/reservations.module.js';
@@ -38,6 +39,7 @@ import { RoomsModule } from './rooms/rooms.module.js';
     RoomsModule,
     ReservationsModule,
     PaymentsModule,
+    InvoicesModule,
     NotificationsModule,
     ExternalPaymentsModule,
     ExternalNotificationsModule,

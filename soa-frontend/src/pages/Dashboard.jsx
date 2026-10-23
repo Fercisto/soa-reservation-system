@@ -238,6 +238,11 @@ function Dashboard() {
               amount
               checkout_url
             }
+            invoice {
+              id
+              uuid
+              status
+            }
             room {
               id
               number
@@ -291,6 +296,11 @@ function Dashboard() {
               method
               amount
               checkout_url
+            }
+            invoice {
+              id
+              uuid
+              status
             }
             room {
               id
@@ -808,6 +818,13 @@ function Dashboard() {
     setError(msg)
   }
 
+  async function reloadAfterInvoice() {
+    await Promise.all([
+      isAdmin ? loadReservations() : loadCustomerData(),
+      loadNotifications(),
+    ])
+  }
+
   const notificationProps = {
     notifications,
     unreadCount,
@@ -871,6 +888,7 @@ function Dashboard() {
         logout={logout}
         notificationProps={notificationProps}
         gql={gql}
+        onInvoiceIssued={reloadAfterInvoice}
       />
     )
   }
@@ -891,6 +909,7 @@ function Dashboard() {
       logout={logout}
       notificationProps={notificationProps}
       gql={gql}
+      onInvoiceIssued={reloadAfterInvoice}
     />
   )
 }

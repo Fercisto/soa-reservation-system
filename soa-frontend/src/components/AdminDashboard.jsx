@@ -4,11 +4,17 @@ import RoomModal from './RoomModal.jsx'
 import AdminReservations from './AdminReservations.jsx'
 import AdminMenu from './AdminMenu.jsx'
 import AdminStaff from './AdminStaff.jsx'
+import InvoiceList from './InvoiceList.jsx'
+import AdminOverview from './AdminOverview.jsx'
+import InvoiceModal from './InvoiceModal.jsx'
+import { HOTEL_NAME } from '../utils/brand.js'
 
 const TABS = [
+  { id: 'overview', label: 'Resumen' },
   { id: 'rooms', label: 'Habitaciones' },
   { id: 'menu', label: 'Menú' },
   { id: 'staff', label: 'Personal' },
+  { id: 'invoices', label: 'Facturas' },
 ]
 
 function AdminDashboard({
@@ -31,13 +37,18 @@ function AdminDashboard({
   logout,
   notificationProps,
   gql,
+  onInvoiceIssued,
 }) {
-  const [tab, setTab] = useState('rooms')
+  const [tab, setTab] = useState('overview')
+  const [invoiceReservation, setInvoiceReservation] = useState(null)
 
   return (
     <main className="simple-app">
       <header className="simple-nav">
-        <strong>Panel de administración</strong>
+        <strong className="brand">
+          {HOTEL_NAME}
+          <small>Administración</small>
+        </strong>
 
         <div className="nav-actions">
           <NotificationBell {...notificationProps} />
@@ -64,9 +75,13 @@ function AdminDashboard({
         ))}
       </nav>
 
+      {tab === 'overview' && <AdminOverview gql={gql} onOpenTab={setTab} />}
+
       {tab === 'menu' && <AdminMenu gql={gql} />}
 
       {tab === 'staff' && <AdminStaff gql={gql} />}
+
+      {tab === 'invoices' && <InvoiceList gql={gql} isAdmin onChanged={onInvoiceIssued} />}
 
       {tab === 'rooms' && (
         <>
@@ -192,9 +207,19 @@ function AdminDashboard({
             reservations={reservations}
             cancelReservation={cancelReservation}
             registerCashPayment={registerCashPayment}
+            openInvoice={setInvoiceReservation}
             busy={busy}
           />
         </>
+      )}
+
+      {invoiceReservation && (
+        <InvoiceModal
+          gql={gql}
+          reservation={invoiceReservation}
+          onClose={() => setInvoiceReservation(null)}
+          onChanged={onInvoiceIssued}
+        />
       )}
     </main>
   )

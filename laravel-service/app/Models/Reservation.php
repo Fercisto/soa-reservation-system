@@ -86,6 +86,20 @@ class Reservation extends Model
         return $this->hasOne(Payment::class)->latestOfMany();
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * Latest stamped invoice, issued or cancelled.
+     */
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class)
+            ->ofMany(['id' => 'max'], fn ($query) => $query->where('status', '!=', 'pending'));
+    }
+
     public function isPaid(): bool
     {
         return $this->payments()->where('status', 'paid')->exists();

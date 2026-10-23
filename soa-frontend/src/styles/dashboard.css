@@ -48,6 +48,29 @@ button {
   font-weight: 600;
 }
 
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: #235b46;
+  letter-spacing: -0.01em;
+}
+
+.brand small {
+  color: #68706a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login-brand {
+  display: block;
+  margin-bottom: 14px;
+  color: #235b46;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .nav-actions {
   display: flex;
   align-items: center;
@@ -494,26 +517,10 @@ tbody tr:hover {
   color: #202522;
 }
 
-.customer-heading,
 .customer-layout,
 .customer-history {
   max-width: 1180px;
   margin: 0 auto;
-}
-
-.customer-heading {
-  padding: 48px 0 28px;
-}
-
-.customer-heading h1 {
-  font-size: 36px;
-  font-weight: 600;
-  letter-spacing: -0.04em;
-}
-
-.customer-heading p {
-  margin-top: 8px;
-  color: #68706a;
 }
 
 .customer-layout {
@@ -659,12 +666,8 @@ tbody tr:hover {
   line-height: 1.4;
 }
 
-.customer-history {
-  margin-top: 42px;
-}
-
 .customer-history > p {
-  margin-top: 14px;
+  margin-top: 0;
   color: #68706a;
 }
 
@@ -713,10 +716,6 @@ tbody tr:hover {
 @media (max-width: 800px) {
   .customer-app {
     padding: 18px 14px 40px;
-  }
-
-  .customer-heading {
-    padding: 36px 0 22px;
   }
 
   .customer-layout {
@@ -1035,33 +1034,6 @@ button.category-chip.active {
   margin-top: 42px;
 }
 
-.restaurant-heading {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: end;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.restaurant-heading h2 {
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.restaurant-heading p {
-  margin-top: 5px;
-  color: #68706a;
-  font-size: 13px;
-}
-
-.restaurant-heading select {
-  padding: 8px 10px;
-  border: 1px solid #cfd5ce;
-  border-radius: 3px;
-  background: #fff;
-}
-
 .menu-group {
   margin-bottom: 18px;
   border: 1px solid #d9dcd5;
@@ -1129,5 +1101,341 @@ button.category-chip.active {
   .inline-form input {
     flex: 1;
     width: auto;
+  }
+}
+
+/* Invoices */
+
+.invoice-intro {
+  margin: 0 0 4px;
+  color: #68706a;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.room-modal.invoice-modal {
+  width: min(100%, 760px);
+}
+
+.invoice-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #202522;
+  font-size: 13px;
+}
+
+.invoice-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #235b46;
+}
+
+.invoice-sheet-header span {
+  display: block;
+  color: #68706a;
+  font-size: 12px;
+}
+
+.invoice-sheet-header strong {
+  font-size: 22px;
+}
+
+.invoice-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.invoice-parties section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  background: #f5f5f2;
+}
+
+.invoice-parties h3,
+.invoice-seals span,
+.invoice-stamp dt {
+  color: #68706a;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.invoice-concepts {
+  min-width: 0;
+}
+
+.invoice-concepts th:last-child,
+.invoice-concepts td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.invoice-concepts td {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.invoice-concepts td small {
+  display: block;
+  margin-top: 3px;
+  color: #68706a;
+}
+
+.invoice-concepts tfoot td {
+  padding: 6px 12px;
+  border-top: 0;
+}
+
+.invoice-concepts tfoot td:first-child {
+  text-align: right;
+  color: #68706a;
+}
+
+.invoice-concepts tfoot tr:last-child td {
+  border-top: 1px solid #d9dcd5;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.invoice-stamp {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.invoice-stamp img {
+  width: 132px;
+  height: 132px;
+  flex-shrink: 0;
+}
+
+.invoice-stamp dl {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.invoice-stamp dd {
+  margin: 0 0 6px;
+  word-break: break-all;
+}
+
+.invoice-seals p {
+  margin: 2px 0 8px;
+  color: #4e5751;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.invoice-footnote {
+  color: #68706a;
+  text-align: center;
+}
+
+.invoice-uuid {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.invoice-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: #4e5751;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .invoice-parties {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-stamp {
+    flex-direction: column;
+  }
+}
+
+/* Only the invoice is printed, so the browser can save it as PDF. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .invoice-sheet,
+  .invoice-sheet * {
+    visibility: visible;
+  }
+
+  .modal-backdrop {
+    position: static;
+    padding: 0;
+    background: none;
+  }
+
+  .room-modal.invoice-modal {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .invoice-sheet {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Customer sections */
+
+.customer-tabs {
+  margin-bottom: 18px;
+}
+
+/* Every section starts with the same heading, aligned with the menu. */
+.customer-app .simple-heading {
+  padding: 28px 0 24px;
+}
+
+.customer-app .restaurant-menu {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.customer-app .simple-heading select {
+  padding: 8px 10px;
+  border: 1px solid #cfd5ce;
+  border-radius: 3px;
+  background: #fff;
+}
+
+@media (max-width: 700px) {
+  .customer-tabs {
+    overflow-x: auto;
+  }
+
+  .customer-tabs button {
+    flex-shrink: 0;
+    padding: 10px 12px;
+  }
+
+  .customer-app .simple-heading {
+    padding: 22px 0 18px;
+  }
+
+  .customer-app .simple-heading select {
+    width: 100%;
+    margin-top: 14px;
+  }
+}
+
+.invoice-cancel {
+  margin-right: auto;
+}
+
+/* Admin overview */
+
+.overview-hero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  max-width: 1180px;
+  margin: 0 auto 16px;
+}
+
+.overview-hero > div,
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px 22px;
+  border: 1px solid #d9dcd5;
+  background: #fff;
+}
+
+.overview-hero span,
+.stat-tile span {
+  color: #59625c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.overview-hero strong {
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.overview-occupancy strong {
+  font-size: 32px;
+}
+
+.overview-hero small,
+.stat-tile small {
+  color: #68706a;
+  font-size: 13px;
+}
+
+.meter {
+  height: 8px;
+  margin: 4px 0 2px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #dcecdf;
+}
+
+.meter > div {
+  height: 100%;
+  border-radius: 4px;
+  background: #235b46;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  max-width: 1180px;
+  margin: 0 auto 24px;
+}
+
+.stat-tile strong {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.overview-arrivals .table-filters {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.overview-arrivals table {
+  min-width: 560px;
+}
+
+@media (max-width: 700px) {
+  .overview-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-hero strong {
+    font-size: 40px;
   }
 }

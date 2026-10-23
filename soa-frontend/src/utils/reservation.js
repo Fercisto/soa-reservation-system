@@ -9,7 +9,10 @@ export function reservationNights(checkIn, checkOut) {
 }
 
 export function money(value) {
-  return `$${Number(value || 0).toFixed(2)}`
+  return `$${Number(value || 0).toLocaleString('es-MX', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
 }
 
 const RESERVATION_STATUS = {

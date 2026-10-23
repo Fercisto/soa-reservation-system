@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\User;
@@ -25,6 +26,25 @@ class ReservationNotifier
         $notification = new ReservationCancelled($reservation, $cancelledBy, $refundedPayment);
 
         $reservation->user->notify($notification);
+        Notification::send(self::admins()->except($cancelledBy->id), $notification);
+    }
+
+    public static function invoiced(Reservation $reservation, Invoice $invoice, User $requestedBy): void
+    {
+        $notification = new InvoiceIssued($reservation, $invoice);
+
+        $reservation->user->notify($notification);
+        Notification::send(self::admins()->except($requestedBy->id), $notification);
+    }
+
+    public static function invoiceCancelled(Reservation $reservation, Invoice $invoice, User $cancelledBy): void
+    {
+        $notification = new InvoiceCancelled($reservation, $invoice, $cancelledBy);
+
+        if ($reservation->user_id !== $cancelledBy->id) {
+            $reservation->user->notify($notification);
+        }
+
         Notification::send(self::admins()->except($cancelledBy->id), $notification);
     }
 

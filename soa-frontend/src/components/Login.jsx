@@ -1,3 +1,5 @@
+import { HOTEL_NAME } from '../utils/brand.js'
+
 function Login({
   login,
   setLogin,
@@ -16,10 +18,12 @@ function Login({
           loginUser(login)
         }}
       >
+        <span className="login-brand">{HOTEL_NAME}</span>
+
         <h1>Iniciar sesión</h1>
 
         <p>
-          Ingresa para administrar las habitaciones.
+          Ingresa para reservar tu estancia o administrar el hotel.
         </p>
 
         <label>

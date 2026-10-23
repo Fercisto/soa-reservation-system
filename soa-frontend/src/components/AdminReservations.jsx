@@ -3,11 +3,13 @@ import {
   paymentStatusLabel,
   isPaymentWindowOpen,
 } from '../utils/reservation.js'
+import { invoiceStatusLabel } from '../utils/invoice.js'
 
 function AdminReservations({
   reservations,
   cancelReservation,
   registerCashPayment,
+  openInvoice,
   busy,
 }) {
   const activeReservations = reservations.filter(
@@ -68,6 +70,15 @@ function AdminReservations({
                 <span>
                   {paymentStatusLabel(reservation.latest_payment)}
                 </span>
+
+                {reservation.invoice && (
+                  <button
+                    className="simple-link"
+                    onClick={() => openInvoice(reservation)}
+                  >
+                    {invoiceStatusLabel(reservation.invoice)}: ver
+                  </button>
+                )}
 
                 {isPaymentWindowOpen(reservation) && (
                   <button

@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Invoicing\CfdiBuilder;
+use App\Invoicing\FakeInvoiceGateway;
+use App\Invoicing\InvoiceGateway;
+use App\Invoicing\ProfactGateway;
 use App\Payments\FakeGateway;
 use App\Payments\PaymentGateway;
 use App\Payments\StripeGateway;
@@ -24,6 +28,20 @@ class AppServiceProvider extends ServiceProvider
                 ),
             };
         });
+
+        $this->app->bind(InvoiceGateway::class, function () {
+            return match (config('services.invoicing.driver')) {
+                'fake' => new FakeInvoiceGateway(),
+                default => new ProfactGateway(
+                    config('services.profact.wsdl'),
+                    (string) config('services.profact.user'),
+                    config('services.invoicing.emitter.rfc'),
+                    (bool) config('services.profact.verify_ssl'),
+                ),
+            };
+        });
+
+        $this->app->bind(CfdiBuilder::class, fn () => new CfdiBuilder(config('services.invoicing.emitter')));
     }
 
     /**

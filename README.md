@@ -40,6 +40,7 @@ The purpose of the project is to demonstrate interoperability between different 
 │  Rooms            │
 │  Reservations     │
 │  Payments ────────┼──▶ Stripe Checkout
+│  Invoices ────────┼──▶ Profact PAC (SOAP) ──▶ SAT
 │  Notifications    │
 └─────────┬─────────┘
           │
@@ -62,6 +63,7 @@ Responsibilities:
 * Room management (admin only for create / update / delete / status changes)
 * Reservation management with date-conflict detection
 * Payment registration and verification through Stripe Checkout
+* Electronic invoices (CFDI 4.0) for paid reservations, stamped with the Profact PAC
 * In-app notifications (Laravel Notifications, `database` channel) for reservation events
 * Database operations
 
@@ -90,6 +92,11 @@ Responsibilities:
 | GET | `/payments/{id}` | token | Payment detail |
 | POST | `/payments/{id}/verify` | token | Ask Stripe for the payment status and confirm the reservation if paid |
 | POST | `/payments/webhook` | Stripe signature | Stripe webhook (`checkout.session.*` events) |
+| GET | `/invoices?status=&reservation_id=` | token | Own invoices (admin: all invoices) |
+| POST | `/invoices` | token | Invoice a paid reservation with the customer's fiscal data |
+| GET | `/invoices/{id}` | token | Invoice detail with the stamped `xml` and `qr_code` |
+| POST | `/invoices/{id}/cancel` | token | Cancel the CFDI with the SAT; the reservation stays paid and can be invoiced again |
+| GET | `/admin/summary` | admin | Dashboard KPIs: month income, refunds and invoicing, today's occupancy, arrivals and departures, pending payments, paid but not invoiced, upcoming arrivals |
 | GET | `/notifications?unread=&limit=` | token | Current user's notifications (newest first) and `unread_count` |
 | PATCH | `/notifications/{id}/read` | token | Mark one notification as read |
 | PATCH | `/notifications/read-all` | token | Mark all notifications as read |
@@ -107,7 +114,8 @@ Responsibilities:
 * Only `pending` and `confirmed` reservations block dates.
 * The payment amount is computed on the server: room price × nights.
 * A reservation can only have one paid payment; reservations with a payment in progress or completed cannot change dates.
-* Cancelling a paid reservation refunds the payment (status `refunded`).
+* Cancelling a paid reservation refunds the payment (status `refunded`) and cancels its invoice with the SAT.
+* Only `confirmed` reservations with a `paid` payment can be invoiced, once.
 
 ### NestJS Gateway
 
@@ -133,10 +141,13 @@ Responsibilities:
 | Mutation | `createReservation`, `updateReservationDates`, `cancelReservation` | token |
 | Query | `payments(status, reservationId)`, `payment(id)` | token |
 | Mutation | `createPayment(input)`, `verifyPayment(id)` | token |
+| Query | `invoices(status, reservationId)`, `invoice(id)` (with `xml` and `qr_code`) | token |
+| Mutation | `requestInvoice(input)`, `cancelInvoice(id)` | token |
+| Query | `adminSummary` | admin |
 | Query | `notifications(unreadOnly, limit)` → `{ unread_count, notifications }` | token |
 | Mutation | `markNotificationAsRead(id)`, `markAllNotificationsAsRead` | token |
 
-`Reservation` also exposes `latest_payment` so clients can show whether a reservation is paid.
+`Reservation` also exposes `latest_payment` and `invoice` so clients can show whether a reservation is paid and invoiced.
 
 The equivalent legacy REST routes (`/auth/*`, `/rooms/*`, `/reservations/*`) are still available in NestJS.
 
@@ -147,8 +158,12 @@ The frontend is built with React and Vite.
 Features:
 
 * Login and registration
-* **Customer view:** list available rooms, reserve and pay with Stripe in one step, resume a pending payment, view and cancel own reservations
-* **Admin view:** create, edit and delete rooms; view active reservations with their payment status, register cash payments and cancel reservations
+* **Customer view**, with a menu of four sections:
+  * **Reservar:** available rooms for the chosen dates; reserve and pay with Stripe in one step
+  * **Mis reservaciones:** resume a pending payment, cancel, and request or open the invoice of a paid reservation
+  * **Restaurante:** the hotel restaurant menu
+  * **Facturas:** own invoices; download the XML or print / save as PDF
+* **Admin view:** **Resumen** tab with KPIs (income and occupancy, arrivals, pending payments, invoicing, upcoming arrivals); create, edit and delete rooms; view active reservations with their payment status, register cash payments and cancel reservations; list every invoice (tab **Facturas**)
 * Notification bell in the header with an unread badge; it refreshes every 30 seconds and after paying or cancelling
 * Logout revokes the token in Laravel
 * If the stored token is expired or invalid, the session is cleared and the user is sent back to the login screen
@@ -206,6 +221,33 @@ stripe listen --forward-to http://127.0.0.1:8000/api/payments/webhook
 
 Copy the `whsec_...` secret it prints into `STRIPE_WEBHOOK_SECRET`.
 
+## Invoices (CFDI 4.0)
+
+Paid reservations can be invoiced with the **Profact** PAC (`timbracfdi33.mx`, SOAP). Laravel builds the CFDI 4.0 XML, Profact seals it with the emitter's CSD registered in its platform and stamps it with the SAT, and returns the stamped XML with its UUID (folio fiscal) and the verification QR code.
+
+```text
+React "Facturar" ──requestInvoice──▶ NestJS ──POST /api/invoices──▶ Laravel ──TimbraCFDI (SOAP)──▶ Profact ──▶ SAT
+```
+
+1. On a `confirmed` reservation with a `paid` payment, the customer clicks **Facturar** and enters RFC, name, fiscal postal code, tax regime and CFDI use (`G03` or `S01`). The form is filled with the customer's last invoice.
+2. Laravel builds an income CFDI (`TipoDeComprobante="I"`, `MetodoPago="PUE"`, `FormaPago` `04` card or `01` cash) with one concept, SAT key `90111800` (hotel lodging). The amount paid already includes 16% VAT; it is split so that subtotal + VAT equals the amount paid.
+3. Profact answers with the stamped XML or with the SAT error, which is shown to the customer (e.g. `CFDI40143 - Este RFC del receptor no existe...`). A rejected request leaves nothing saved, so the customer can correct the data and try again.
+4. The customer receives a "Factura emitida" notification and the admins a "Nueva factura" one. The customer can open the invoice: printed representation with the QR code, **Descargar XML** and **Imprimir o guardar PDF**.
+5. An invoice with wrong data can be cancelled from its detail (**Cancelar factura**, by the customer or an admin). The reservation stays paid and shows **Facturar de nuevo**. Profact answers code `330203` for a CFDI the SAT has not registered yet (usually the first minute after stamping); the customer is asked to try again in a few minutes.
+6. Cancelling a paid reservation also cancels the CFDI (`CancelaCFDI40`, reason `02`). A CFDI stamped minutes ago may not be registered with the SAT yet; the cancellation is then retried every time invoices are listed.
+
+Invoicing providers are behind `App\Invoicing\InvoiceGateway`: `INVOICE_DRIVER=profact` uses `ProfactGateway` and `INVOICE_DRIVER=fake` an offline gateway used by the test suite.
+
+**Test environment:** by default the service uses Profact's test URL, its test integrator user (`mvpNUXmQfK8=`) and the SAT test emitter `IIA040805DZ4`. In this environment the SAT only accepts its test RFCs as customers, for example:
+
+| RFC | Name | Regime | Postal code |
+| --- | ---- | ------ | ----------- |
+| `MISC491214B86` | CECILIA MIRANDA SANCHEZ | 612 | 01010 |
+| `XAMA620210DQ5` | ALBA XKARAJAM MENDEZ | 612 | 01219 |
+| `EKU9003173C9` | ESCUELA KEMPER URGATE | 601 | 42501 |
+
+The name, regime and postal code must match the SAT list exactly. Profact's integration kit is not part of the repository.
+
 ## Notifications
 
 Notifications are sent with Laravel Notifications and stored only in the `notifications` table (`database` channel). No email is sent; users read them from the bell in the header.
@@ -213,6 +255,8 @@ Notifications are sent with Laravel Notifications and stored only in the `notifi
 | Event | Customer | Admins |
 | ----- | -------- | ------ |
 | Reservation confirmed (payment `paid`, card or cash) | "Reservación confirmada" with the amount paid | "Nueva reservación" with the customer, room, dates and amount |
+| Invoice cancelled | "Factura cancelada", when an admin cancelled it | "Factura cancelada", saying who cancelled it; the admin who cancelled it is not notified |
+| Invoice issued | "Factura emitida" with the amount and the name on the invoice | "Nueva factura" with the customer, RFC and folio; an admin who issued it is not notified |
 | Confirmed reservation cancelled | "Reservación cancelada", with the refund (card refund or cash to pick up) | "Reservación cancelada", saying who cancelled it and the refund; the admin who cancelled it is not notified |
 
 Pending reservations that are abandoned at checkout or expire do not create notifications, so admins are only notified about real (paid) reservations.
@@ -286,6 +330,20 @@ Payment variables in `laravel-service/.env`:
 
 Never commit the secret key: `.env` is ignored by git.
 
+Invoicing variables (the defaults use Profact's test environment, see [Invoices](#invoices-cfdi-40)):
+
+| Variable | Description |
+| -------- | ----------- |
+| `INVOICE_DRIVER` | `profact` (default) or `fake` |
+| `PROFACT_WSDL` | Default `https://pruebas.timbracfdi33.mx/Timbrado.asmx?wsdl`; production is `https://timbracfdi33.mx:1443/Timbrado.asmx?wsdl` |
+| `PROFACT_USER` | Integrator user, default the test user `mvpNUXmQfK8=` |
+| `PROFACT_VERIFY_SSL` | Verify Profact's TLS certificate, default `false` (the test server's certificate is not trusted) |
+| `INVOICE_SERIES` | CFDI series, default `H`; the folio is the invoice id |
+| `HOTEL_TIMEZONE` | Time zone for invoice dates and the admin summary ("today", "this month"), default `America/Mexico_City` |
+| `INVOICE_EMITTER_RFC`, `INVOICE_EMITTER_NAME`, `INVOICE_EMITTER_TAX_REGIME`, `INVOICE_EMITTER_POSTAL_CODE` | The hotel's fiscal data, default the SAT test emitter `IIA040805DZ4` |
+
+Invoicing needs the PHP **soap** extension: uncomment `extension=soap` in `php.ini` (in Laragon: *Menu → PHP → Extensions → soap*) and restart the server.
+
 The seeder creates two demo users (password `password`):
 
 | Email | Role |
@@ -331,6 +389,7 @@ cd nest-client && npm test
 
 * PHP, Laravel, Laravel Sanctum
 * Stripe Checkout (`stripe/stripe-php`)
+* Profact PAC (SOAP) for CFDI 4.0 invoices
 * Node.js, NestJS, Apollo GraphQL, Axios
 * React, Vite
 * GraphQL, REST, HTTP, JSON

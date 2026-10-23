@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\AdminSummaryController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExternalClientSettingsController;
 use App\Http\Controllers\ExternalNotificationController;
 use App\Http\Controllers\ExternalPaymentController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RoomController;
@@ -58,6 +60,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payments', [PaymentController::class, 'store']);
     Route::get('/payments/{payment}', [PaymentController::class, 'show']);
     Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify']);
+    Route::get('/admin/summary', AdminSummaryController::class)->middleware('role:admin');
+    Route::get('/invoices', [InvoiceController::class, 'index']);
+    Route::post('/invoices', [InvoiceController::class, 'store']);
+    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
+    Route::post('/invoices/{invoice}/cancel', [InvoiceController::class, 'cancel']);
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);

@@ -39,9 +39,9 @@ function RestaurantMenu({ gql }) {
 
   return (
     <section className="restaurant-menu">
-      <div className="restaurant-heading">
+      <div className="simple-heading">
         <div>
-          <h2>Restaurante</h2>
+          <h1>Restaurante</h1>
           <p>Menú del restaurante del hotel y servicio a la habitación.</p>
         </div>
 

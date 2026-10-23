@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Invoicing\InvoiceGateway;
+use App\Models\Invoice;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Notifications\ReservationNotifier;
@@ -16,8 +18,8 @@ class ReservationController extends Controller
         Reservation::expireStale();
 
         $query = $request->user()->role === 'admin'
-            ? Reservation::query()->with(['room', 'user', 'latestPayment'])
-            : $request->user()->reservations()->with(['room', 'latestPayment']);
+            ? Reservation::query()->with(['room', 'user', 'latestPayment', 'invoice'])
+            : $request->user()->reservations()->with(['room', 'latestPayment', 'invoice']);
 
         $reservations = $query
             ->latest('check_in')
@@ -33,7 +35,7 @@ class ReservationController extends Controller
         return response()->json(
             $this->ownedReservation($request, $reservation)
                 ->refresh()
-                ->load(['room', 'user', 'latestPayment'])
+                ->load(['room', 'user', 'latestPayment', 'invoice'])
         );
     }
 
@@ -128,8 +130,12 @@ class ReservationController extends Controller
         return response()->json($reservation->fresh()->load('room'));
     }
 
-    public function cancel(Request $request, Reservation $reservation, PaymentGateway $gateway)
-    {
+    public function cancel(
+        Request $request,
+        Reservation $reservation,
+        PaymentGateway $gateway,
+        InvoiceGateway $invoiceGateway
+    ) {
         $reservation = $this->ownedReservation($request, $reservation);
 
         if (! in_array($reservation->status, Reservation::ACTIVE_STATUSES, true)) {
@@ -154,12 +160,20 @@ class ReservationController extends Controller
 
         $reservation->update(['status' => 'cancelled']);
 
+        // The refunded stay is no longer income, so its CFDI is cancelled with the SAT.
+        if ($paidPayment) {
+            $reservation->invoices()
+                ->where('status', 'issued')
+                ->get()
+                ->each(fn (Invoice $invoice) => $invoice->cancelWith($invoiceGateway));
+        }
+
         // Unpaid reservations abandoned at checkout don't produce notifications.
         if ($wasConfirmed) {
             ReservationNotifier::cancelled($reservation, $request->user(), $paidPayment);
         }
 
-        return response()->json($reservation->fresh()->load(['room', 'latestPayment']));
+        return response()->json($reservation->fresh()->load(['room', 'latestPayment', 'invoice']));
     }
 
     private function ownedReservation(Request $request, Reservation $reservation): Reservation

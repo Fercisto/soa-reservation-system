@@ -1,3 +1,5 @@
+import { HOTEL_NAME } from '../utils/brand.js'
+
 function Register({
   register,
   setRegister,
@@ -16,6 +18,8 @@ function Register({
           registerUser(register)
         }}
       >
+        <span className="login-brand">{HOTEL_NAME}</span>
+
         <h1>Crear cuenta</h1>
 
         <p>
