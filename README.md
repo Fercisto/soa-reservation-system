@@ -7,7 +7,7 @@ A Service-Oriented Architecture (SOA) project developed as an academic project t
 The system is a hotel room reservation application split into three independent services:
 
 * **React frontend** (`soa-frontend`) – user interface. It talks **only** to NestJS, using **GraphQL**.
-* **NestJS gateway** (`nest-client`) – exposes a GraphQL API (and legacy REST endpoints) and forwards every operation to Laravel over **REST**.
+* **NestJS gateway** (`nest-client`) – exposes a GraphQL API and forwards every operation to Laravel over **REST**.
 * **Laravel service** (`laravel-service`) – owns the business rules, authentication, and the database.
 
 The purpose of the project is to demonstrate interoperability between different technologies and protocols.
@@ -148,8 +148,6 @@ Responsibilities:
 | Mutation | `markNotificationAsRead(id)`, `markAllNotificationsAsRead` | token |
 
 `Reservation` also exposes `latest_payment` and `invoice` so clients can show whether a reservation is paid and invoiced.
-
-The equivalent legacy REST routes (`/auth/*`, `/rooms/*`, `/reservations/*`) are still available in NestJS.
 
 ### React Frontend
 
