@@ -67,7 +67,13 @@ export class AuthService {
         }),
       );
 
-      return response.data.user;
+      const { user, active_passes } = response.data;
+
+      if (user?.hotel) {
+        user.hotel.active_passes = active_passes;
+      }
+
+      return user;
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');
     }

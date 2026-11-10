@@ -38,7 +38,7 @@ class AdminSummaryTest extends TestCase
             'cfdi_use' => 'G03',
         ])->assertCreated();
 
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
+        $this->actingAs($this->admin())
             ->getJson('/api/admin/summary')
             ->assertOk()
             ->assertJsonPath('today', $today)
@@ -67,6 +67,7 @@ class AdminSummaryTest extends TestCase
     private function room(float $price): Room
     {
         return Room::create([
+            'hotel_id' => $this->hotel()->id,
             'number' => fake()->unique()->numerify('###'),
             'type' => 'double',
             'price' => $price,

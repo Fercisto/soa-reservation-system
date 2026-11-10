@@ -78,7 +78,7 @@ class PaymentTest extends TestCase
             ->postJson('/api/payments', ['reservation_id' => $reservation->id, 'method' => 'cash'])
             ->assertForbidden();
 
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
+        $this->actingAs($this->admin())
             ->postJson('/api/payments', ['reservation_id' => $reservation->id, 'method' => 'cash'])
             ->assertCreated()
             ->assertJsonPath('status', 'paid')
@@ -146,7 +146,7 @@ class PaymentTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1);
 
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
+        $this->actingAs($this->admin())
             ->getJson('/api/payments?status=paid')
             ->assertOk()
             ->assertJsonCount(2);
@@ -203,7 +203,7 @@ class PaymentTest extends TestCase
             ->postJson('/api/payments', ['reservation_id' => $reservation->id])
             ->json('id');
 
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
+        $this->actingAs($this->admin())
             ->postJson('/api/payments', ['reservation_id' => $reservation->id, 'method' => 'cash'])
             ->assertCreated()
             ->assertJsonPath('status', 'paid');
@@ -215,6 +215,7 @@ class PaymentTest extends TestCase
     private function reservationFor(User $user, int $nights = 2, float $price = 100): Reservation
     {
         $room = Room::create([
+            'hotel_id' => $this->hotel()->id,
             'number' => fake()->unique()->numerify('###'),
             'type' => 'double',
             'price' => $price,

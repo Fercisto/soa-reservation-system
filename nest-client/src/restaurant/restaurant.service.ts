@@ -8,7 +8,7 @@ type Method = 'get' | 'post' | 'put' | 'delete';
 
 /**
  * Client for the restaurant system's menu-service and employee-service.
- * The hotel is identified with X-Api-Key, so it only sees and manages its own data.
+ * Each hotel is identified with its own X-Api-Key, so it only sees and manages its own data.
  */
 @Injectable()
 export class RestaurantService {
@@ -23,81 +23,73 @@ export class RestaurantService {
 
   // Menu
 
-  findCategories() {
-    return this.request('get', `${this.menuUrl}/categories`);
+  findCategories(apiKey: string) {
+    return this.request(apiKey, 'get', `${this.menuUrl}/categories`);
   }
 
-  createCategory(name: string) {
-    return this.request('post', `${this.menuUrl}/categories`, { name });
+  createCategory(apiKey: string, name: string) {
+    return this.request(apiKey, 'post', `${this.menuUrl}/categories`, { name });
   }
 
-  updateCategory(id: string, name: string) {
-    return this.request('put', `${this.menuUrl}/categories/${id}`, { name });
+  updateCategory(apiKey: string, id: string, name: string) {
+    return this.request(apiKey, 'put', `${this.menuUrl}/categories/${id}`, { name });
   }
 
-  deleteCategory(id: string) {
-    return this.request('delete', `${this.menuUrl}/categories/${id}`);
+  deleteCategory(apiKey: string, id: string) {
+    return this.request(apiKey, 'delete', `${this.menuUrl}/categories/${id}`);
   }
 
-  findDishes(categoryId?: number) {
-    return this.request('get', `${this.menuUrl}/dishes`, undefined, {
+  findDishes(apiKey: string, categoryId?: number) {
+    return this.request(apiKey, 'get', `${this.menuUrl}/dishes`, undefined, {
       categoryId,
     });
   }
 
-  createDish(input: DishInput) {
-    return this.request('post', `${this.menuUrl}/dishes`, input);
+  createDish(apiKey: string, input: DishInput) {
+    return this.request(apiKey, 'post', `${this.menuUrl}/dishes`, input);
   }
 
-  updateDish(id: string, input: DishInput) {
-    return this.request('put', `${this.menuUrl}/dishes/${id}`, input);
+  updateDish(apiKey: string, id: string, input: DishInput) {
+    return this.request(apiKey, 'put', `${this.menuUrl}/dishes/${id}`, input);
   }
 
-  deleteDish(id: string) {
-    return this.request('delete', `${this.menuUrl}/dishes/${id}`);
+  deleteDish(apiKey: string, id: string) {
+    return this.request(apiKey, 'delete', `${this.menuUrl}/dishes/${id}`);
   }
 
   // Employees
 
-  findEmployees(filters: { role?: string; shift?: string; active?: boolean }) {
-    return this.request('get', this.employeesUrl, undefined, filters);
+  findEmployees(apiKey: string, filters: { role?: string; shift?: string; active?: boolean }) {
+    return this.request(apiKey, 'get', this.employeesUrl, undefined, filters);
   }
 
-  findRoles() {
-    return this.request('get', `${this.employeesUrl}/roles`);
+  findRoles(apiKey: string) {
+    return this.request(apiKey, 'get', `${this.employeesUrl}/roles`);
   }
 
-  findShifts() {
-    return this.request('get', `${this.employeesUrl}/shifts`);
+  findShifts(apiKey: string) {
+    return this.request(apiKey, 'get', `${this.employeesUrl}/shifts`);
   }
 
-  createEmployee(input: EmployeeInput) {
-    return this.request('post', this.employeesUrl, input);
+  createEmployee(apiKey: string, input: EmployeeInput) {
+    return this.request(apiKey, 'post', this.employeesUrl, input);
   }
 
-  updateEmployee(id: string, input: EmployeeInput) {
-    return this.request('put', `${this.employeesUrl}/${id}`, input);
+  updateEmployee(apiKey: string, id: string, input: EmployeeInput) {
+    return this.request(apiKey, 'put', `${this.employeesUrl}/${id}`, input);
   }
 
-  deleteEmployee(id: string) {
-    return this.request('delete', `${this.employeesUrl}/${id}`);
+  deleteEmployee(apiKey: string, id: string) {
+    return this.request(apiKey, 'delete', `${this.employeesUrl}/${id}`);
   }
 
   private async request(
+    apiKey: string,
     method: Method,
     url: string,
     body?: unknown,
     params?: object,
   ) {
-    const apiKey = process.env.RESTAURANT_API_KEY;
-
-    if (!apiKey) {
-      throw new HttpException(
-        'RESTAURANT_API_KEY is not configured',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    }
-
     try {
       const response = await firstValueFrom(
         this.httpService.request({

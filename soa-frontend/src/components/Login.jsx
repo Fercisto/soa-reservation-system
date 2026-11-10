@@ -1,4 +1,5 @@
-import { HOTEL_NAME } from '../utils/brand.js'
+import { PLATFORM_NAME } from '../utils/brand.js'
+import { linkProps } from '../utils/router.js'
 
 function Login({
   login,
@@ -8,6 +9,8 @@ function Login({
   error,
   message,
   onRegister,
+  brand = PLATFORM_NAME,
+  subtitle,
 }) {
   return (
     <main className="simple-login">
@@ -18,12 +21,14 @@ function Login({
           loginUser(login)
         }}
       >
-        <span className="login-brand">{HOTEL_NAME}</span>
+        <a className="login-brand" {...linkProps('/')}>
+          {brand}
+        </a>
 
         <h1>Iniciar sesión</h1>
 
         <p>
-          Ingresa para reservar tu estancia o administrar el hotel.
+          {subtitle || 'Ingresa para reservar tu estancia o administrar tu hotel.'}
         </p>
 
         <label>
@@ -82,6 +87,13 @@ function Login({
           <button type="button" className="simple-link" onClick={onRegister}>
             Crear una
           </button>
+        </p>
+
+        <p className="auth-switch">
+          ¿Tienes un hotel?{' '}
+          <a className="simple-link" {...linkProps('/registrar-hotel')}>
+            Regístralo en {PLATFORM_NAME}
+          </a>
         </p>
       </form>
     </main>

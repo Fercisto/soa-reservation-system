@@ -11,17 +11,23 @@ import { CreateRoomInput } from './dto/room.inputs.js';
 export class RoomsResolver {
   constructor(private readonly roomsService: RoomsService) {}
 
-  @Query(() => [Room], { name: 'rooms' })
-  async getRooms(): Promise<Room[]> {
-    return this.roomsService.findAll();
+  @UseGuards(AuthGuard)
+  @Query(() => [Room], { name: 'rooms', description: "Rooms of the admin's hotel" })
+  async getRooms(@CurrentAuthToken() token?: string): Promise<Room[]> {
+    if (!token) throw new UnauthorizedException('Authorization token is required');
+    return this.roomsService.findAll(token);
   }
 
-  @Query(() => [Room], { name: 'availableRooms' })
+  @Query(() => [Room], {
+    name: 'availableRooms',
+    description: "A hotel's rooms free for the dates (all available rooms without dates)",
+  })
   async getAvailableRooms(
+    @Args('hotelSlug') hotelSlug: string,
     @Args('checkIn', { nullable: true }) checkIn?: string,
     @Args('checkOut', { nullable: true }) checkOut?: string,
   ): Promise<Room[]> {
-    return this.roomsService.findAvailable(checkIn, checkOut);
+    return this.roomsService.findAvailable(hotelSlug, checkIn, checkOut);
   }
 
   @Query(() => Room, { name: 'room', nullable: true })

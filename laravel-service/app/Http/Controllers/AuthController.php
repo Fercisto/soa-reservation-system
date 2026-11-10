@@ -50,7 +50,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Login successful',
-            'user' => $user,
+            'user' => $user->load('hotel'),
             'token' => $token,
         ]);
     }
@@ -66,8 +66,11 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
+        $user = $request->user()->load('hotel');
+
         return response()->json([
-            'user' => $request->user(),
+            'user' => $user,
+            'active_passes' => $user->hotel?->activePasses() ?? [],
         ]);
     }
 }

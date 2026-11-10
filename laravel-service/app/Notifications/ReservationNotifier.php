@@ -18,7 +18,7 @@ class ReservationNotifier
         $notification = new ReservationConfirmed($reservation, $payment);
 
         $reservation->user->notify($notification);
-        Notification::send(self::admins(), $notification);
+        Notification::send(self::admins($reservation), $notification);
     }
 
     public static function cancelled(Reservation $reservation, User $cancelledBy, ?Payment $refundedPayment): void
@@ -26,7 +26,7 @@ class ReservationNotifier
         $notification = new ReservationCancelled($reservation, $cancelledBy, $refundedPayment);
 
         $reservation->user->notify($notification);
-        Notification::send(self::admins()->except($cancelledBy->id), $notification);
+        Notification::send(self::admins($reservation)->except($cancelledBy->id), $notification);
     }
 
     public static function invoiced(Reservation $reservation, Invoice $invoice, User $requestedBy): void
@@ -34,7 +34,7 @@ class ReservationNotifier
         $notification = new InvoiceIssued($reservation, $invoice);
 
         $reservation->user->notify($notification);
-        Notification::send(self::admins()->except($requestedBy->id), $notification);
+        Notification::send(self::admins($reservation)->except($requestedBy->id), $notification);
     }
 
     public static function invoiceCancelled(Reservation $reservation, Invoice $invoice, User $cancelledBy): void
@@ -45,11 +45,11 @@ class ReservationNotifier
             $reservation->user->notify($notification);
         }
 
-        Notification::send(self::admins()->except($cancelledBy->id), $notification);
+        Notification::send(self::admins($reservation)->except($cancelledBy->id), $notification);
     }
 
-    private static function admins()
+    private static function admins(Reservation $reservation)
     {
-        return User::where('role', 'admin')->get();
+        return User::where('role', 'admin')->where('hotel_id', $reservation->hotel_id)->get();
     }
 }

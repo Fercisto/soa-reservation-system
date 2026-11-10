@@ -18,6 +18,7 @@ class Invoice extends Model
     public const CANCELLATION_REASON = '02';
 
     protected $fillable = [
+        'hotel_id',
         'reservation_id',
         'payment_id',
         'user_id',
@@ -56,6 +57,11 @@ class Invoice extends Model
             'issued_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
+    }
+
+    public function hotel(): BelongsTo
+    {
+        return $this->belongsTo(Hotel::class);
     }
 
     public function reservation(): BelongsTo

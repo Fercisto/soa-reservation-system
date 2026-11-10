@@ -16,16 +16,19 @@ export class RoomsService {
 
   constructor(private readonly httpService: HttpService) {}
 
-  async findAll() {
-    return this.request('get', '/rooms');
+  async findAll(authorization: string) {
+    return this.request('get', '/rooms', undefined, authorization);
   }
 
-  async findAvailable(checkIn?: string, checkOut?: string) {
+  async findAvailable(hotelSlug: string, checkIn?: string, checkOut?: string) {
     const query =
       checkIn && checkOut
         ? `?${new URLSearchParams({ check_in: checkIn, check_out: checkOut })}`
         : '';
-    return this.request('get', `/rooms/available${query}`);
+    return this.request(
+      'get',
+      `/hotels/${encodeURIComponent(hotelSlug)}/rooms/available${query}`,
+    );
   }
 
   async findOne(id: string) {

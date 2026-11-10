@@ -40,7 +40,7 @@ function InvoiceList({ gql, isAdmin = false, onChanged }) {
               check_out
               room { number }
             }
-            ${isAdmin ? 'user { name email }' : ''}
+            ${isAdmin ? 'user { name email }' : 'hotel { name slug }'}
           }
         }
       `,
@@ -174,6 +174,9 @@ function InvoiceList({ gql, isAdmin = false, onChanged }) {
                     </span>
                   </td>
                   <td>
+                    {!isAdmin && invoice.hotel && (
+                      <span className="cell-note">{invoice.hotel.name}</span>
+                    )}
                     Habitación{' '}
                     {invoice.reservation?.room?.number ||
                       invoice.reservation?.room_id}

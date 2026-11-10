@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\ReservationNotifier;
+use App\Saas\Billing;
 use App\Payments\ClientCallback;
 use App\Payments\GatewayResult;
 use App\Payments\PaymentGateway;
@@ -23,6 +24,9 @@ class Payment extends Model
     protected $fillable = [
         'reservation_id',
         'user_id',
+        'hotel_id',
+        'purpose',
+        'metadata',
         'api_client_id',
         'external_reference',
         'description',
@@ -51,6 +55,7 @@ class Payment extends Model
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
             'expires_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 
@@ -72,6 +77,11 @@ class Payment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function hotel(): BelongsTo
+    {
+        return $this->belongsTo(Hotel::class);
     }
 
     public function apiClient(): BelongsTo
@@ -173,6 +183,11 @@ class Payment extends Model
 
         if ($confirmed) {
             ReservationNotifier::confirmed($this->reservation, $this);
+        }
+
+        // A hotel paid the platform: activate its plan or add its credits.
+        if (in_array($this->purpose, Billing::PURPOSES, true)) {
+            Billing::fulfill($this);
         }
     }
 

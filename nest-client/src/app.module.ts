@@ -10,6 +10,7 @@ import { ExternalPaymentsModule } from './external-payments/external-payments.mo
 import { InvoicesModule } from './invoices/invoices.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
+import { PlatformModule } from './platform/platform.module.js';
 import { ReservationsModule } from './reservations/reservations.module.js';
 import { RestaurantModule } from './restaurant/restaurant.module.js';
 import { RoomsModule } from './rooms/rooms.module.js';
@@ -44,6 +45,7 @@ import { RoomsModule } from './rooms/rooms.module.js';
     ExternalPaymentsModule,
     ExternalNotificationsModule,
     RestaurantModule,
+    PlatformModule,
   ],
   controllers: [AppController],
   providers: [AppService],

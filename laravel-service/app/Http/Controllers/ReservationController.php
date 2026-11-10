@@ -17,9 +17,12 @@ class ReservationController extends Controller
     {
         Reservation::expireStale();
 
+        // Admins see their hotel's reservations; guests see theirs at every hotel.
         $query = $request->user()->role === 'admin'
-            ? Reservation::query()->with(['room', 'user', 'latestPayment', 'invoice'])
-            : $request->user()->reservations()->with(['room', 'latestPayment', 'invoice']);
+            ? Reservation::query()
+                ->where('hotel_id', $request->user()->hotel_id)
+                ->with(['room', 'user', 'latestPayment', 'invoice'])
+            : $request->user()->reservations()->with(['room', 'latestPayment', 'invoice', 'hotel:id,name,slug']);
 
         $reservations = $query
             ->latest('check_in')
@@ -35,7 +38,7 @@ class ReservationController extends Controller
         return response()->json(
             $this->ownedReservation($request, $reservation)
                 ->refresh()
-                ->load(['room', 'user', 'latestPayment', 'invoice'])
+                ->load(['room', 'user', 'latestPayment', 'invoice', 'hotel:id,name,slug'])
         );
     }
 
@@ -51,7 +54,13 @@ class ReservationController extends Controller
             'check_out' => 'required|date_format:Y-m-d|after:check_in',
         ]);
 
-        $room = Room::findOrFail($validated['room_id']);
+        $room = Room::with('hotel')->findOrFail($validated['room_id']);
+
+        if (! $room->hotel->plan_active) {
+            return response()->json([
+                'message' => 'This hotel is not accepting reservations.',
+            ], 422);
+        }
 
         if ($room->status !== 'available') {
             return response()->json([
@@ -69,6 +78,7 @@ class ReservationController extends Controller
 
         $reservation = $request->user()->reservations()->create([
             ...$validated,
+            'hotel_id' => $room->hotel_id,
             'status' => 'pending',
             'expires_at' => now()->addMinutes(Reservation::holdMinutes()),
         ]);
@@ -178,8 +188,12 @@ class ReservationController extends Controller
 
     private function ownedReservation(Request $request, Reservation $reservation): Reservation
     {
+        $user = $request->user();
+
         abort_unless(
-            $request->user()->role === 'admin' || $reservation->user_id === $request->user()->id,
+            $user->role === 'admin'
+                ? $reservation->hotel_id === $user->hotel_id
+                : $reservation->user_id === $user->id,
             404
         );
 

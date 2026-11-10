@@ -13,7 +13,7 @@ class NotificationTest extends TestCase
 
     public function test_customer_and_admins_are_notified_when_a_reservation_is_paid(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->admin();
         $customer = User::factory()->create(['name' => 'Ana']);
 
         $this->reserveAndPay($customer);
@@ -30,8 +30,8 @@ class NotificationTest extends TestCase
 
     public function test_cancelling_a_paid_reservation_notifies_the_customer_and_other_admins(): void
     {
-        $actingAdmin = User::factory()->create(['role' => 'admin']);
-        $otherAdmin = User::factory()->create(['role' => 'admin']);
+        $actingAdmin = $this->admin();
+        $otherAdmin = $this->admin();
         $customer = User::factory()->create();
         $reservationId = $this->reserveAndPay($customer);
 
@@ -49,7 +49,7 @@ class NotificationTest extends TestCase
 
     public function test_abandoned_unpaid_reservation_does_not_notify_anyone(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->admin();
         $customer = User::factory()->create();
         $reservationId = $this->actingAs($customer)
             ->postJson('/api/reservations', $this->reservationData())
@@ -65,7 +65,7 @@ class NotificationTest extends TestCase
 
     public function test_user_can_list_and_mark_notifications_as_read(): void
     {
-        User::factory()->create(['role' => 'admin']);
+        $this->admin();
         $customer = User::factory()->create();
         $this->reserveAndPay($customer);
         $this->reserveAndPay($customer, checkInDays: 10);
@@ -99,7 +99,7 @@ class NotificationTest extends TestCase
 
     public function test_user_cannot_read_another_users_notification(): void
     {
-        User::factory()->create(['role' => 'admin']);
+        $this->admin();
         $customer = User::factory()->create();
         $this->reserveAndPay($customer);
         $notificationId = $customer->notifications()->first()->id;
@@ -126,6 +126,7 @@ class NotificationTest extends TestCase
     private function reservationData(int $checkInDays = 1): array
     {
         $room = Room::create([
+            'hotel_id' => $this->hotel()->id,
             'number' => fake()->unique()->numerify('###'),
             'type' => 'double',
             'price' => 100,

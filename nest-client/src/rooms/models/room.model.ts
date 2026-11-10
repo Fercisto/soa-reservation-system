@@ -5,6 +5,9 @@ export class Room {
   @Field(() => ID)
   id: number | string;
 
+  @Field(() => Int, { nullable: true })
+  hotel_id?: number;
+
   @Field()
   number: string;
 

@@ -77,7 +77,7 @@ class InvoiceTest extends TestCase
     public function test_admins_are_notified_about_new_invoices(): void
     {
         $customer = User::factory()->create();
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->admin();
         $reservation = $this->paidReservationFor($customer);
 
         $this->actingAs($customer)
@@ -93,7 +93,7 @@ class InvoiceTest extends TestCase
     public function test_admin_who_issues_the_invoice_is_not_notified(): void
     {
         $customer = User::factory()->create();
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->admin();
         $reservation = $this->paidReservationFor($customer);
 
         $this->actingAs($admin)
@@ -107,7 +107,7 @@ class InvoiceTest extends TestCase
     public function test_wrong_invoice_can_be_cancelled_and_issued_again(): void
     {
         $customer = User::factory()->create();
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->admin();
         $reservation = $this->paidReservationFor($customer);
         $payload = ['reservation_id' => $reservation->id, ...self::FISCAL_DATA];
 
@@ -149,7 +149,7 @@ class InvoiceTest extends TestCase
             ->postJson("/api/invoices/{$id}/cancel")
             ->assertNotFound();
 
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
+        $this->actingAs($this->admin())
             ->postJson("/api/invoices/{$id}/cancel")
             ->assertOk();
 
@@ -313,7 +313,7 @@ class InvoiceTest extends TestCase
 
         $this->actingAs($customer)->getJson('/api/invoices')->assertOk()->assertJsonCount(1);
 
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
+        $this->actingAs($this->admin())
             ->getJson('/api/invoices')
             ->assertOk()
             ->assertJsonCount(2);
@@ -322,6 +322,7 @@ class InvoiceTest extends TestCase
     private function reservationFor(User $user, int $nights = 2, float $price = 100): Reservation
     {
         $room = Room::create([
+            'hotel_id' => $this->hotel()->id,
             'number' => fake()->unique()->numerify('###'),
             'type' => 'double',
             'price' => $price,

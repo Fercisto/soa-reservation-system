@@ -26,6 +26,7 @@ class Reservation extends Model
     public const EXPIRATION_GRACE_MINUTES = 10;
 
     protected $fillable = [
+        'hotel_id',
         'user_id',
         'room_id',
         'check_in',
@@ -33,6 +34,14 @@ class Reservation extends Model
         'status',
         'expires_at',
     ];
+
+    protected static function booted(): void
+    {
+        // A reservation always belongs to the hotel of its room.
+        static::creating(function (Reservation $reservation) {
+            $reservation->hotel_id ??= Room::whereKey($reservation->room_id)->value('hotel_id');
+        });
+    }
 
     protected function casts(): array
     {
@@ -69,6 +78,11 @@ class Reservation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function hotel(): BelongsTo
+    {
+        return $this->belongsTo(Hotel::class);
     }
 
     public function room(): BelongsTo
@@ -128,11 +142,12 @@ class Reservation extends Model
             $this->update(['expires_at' => now()->addMinutes(self::holdMinutes())]);
         }
 
-        $this->loadMissing(['room', 'user']);
+        $this->loadMissing(['room', 'user', 'hotel']);
 
         $payment = $this->payments()->create([
             'user_id' => $this->user_id,
-            'description' => "Habitación {$this->room->number} ({$this->room->type}), "
+            'hotel_id' => $this->hotel_id,
+            'description' => "{$this->hotel->name}: habitación {$this->room->number} ({$this->room->type}), "
                 ."del {$this->check_in->toDateString()} al {$this->check_out->toDateString()}",
             'customer_email' => $this->user->email,
             'amount' => $this->totalAmount(),
@@ -146,8 +161,8 @@ class Reservation extends Model
         // The frontend needs the payment id to verify or cancel it when Stripe sends the customer back.
         $frontendUrl = config('services.payments.frontend_url');
         $payment->update([
-            'success_url' => "{$frontendUrl}/?payment=success&payment_id={$payment->id}",
-            'cancel_url' => "{$frontendUrl}/?payment=cancelled&payment_id={$payment->id}",
+            'success_url' => "{$frontendUrl}/h/{$this->hotel->slug}?payment=success&payment_id={$payment->id}",
+            'cancel_url' => "{$frontendUrl}/h/{$this->hotel->slug}?payment=cancelled&payment_id={$payment->id}",
         ]);
 
         try {

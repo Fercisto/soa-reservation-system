@@ -9,6 +9,7 @@ use App\Invoicing\TaxCatalog;
 use App\Models\Invoice;
 use App\Models\Reservation;
 use App\Notifications\ReservationNotifier;
+use App\Saas\InsufficientCreditsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -31,8 +32,8 @@ class InvoiceController extends Controller
         Invoice::retryCancellations($this->gateway);
 
         $query = $request->user()->role === 'admin'
-            ? Invoice::query()->with(['reservation.room', 'user'])
-            : Invoice::query()->where('user_id', $request->user()->id)->with('reservation.room');
+            ? Invoice::query()->where('hotel_id', $request->user()->hotel_id)->with(['reservation.room', 'user'])
+            : Invoice::query()->where('user_id', $request->user()->id)->with(['reservation.room', 'hotel:id,name,slug']);
 
         $invoices = $query
             ->where('status', '!=', 'pending')
@@ -49,12 +50,7 @@ class InvoiceController extends Controller
      */
     public function show(Request $request, Invoice $invoice)
     {
-        abort_unless(
-            $invoice->status !== 'pending'
-                && ($request->user()->role === 'admin' || $invoice->user_id === $request->user()->id),
-            404,
-            'Invoice not found.'
-        );
+        $this->ensureCanSee($request, $invoice);
 
         return response()->json(
             $invoice->load(['reservation.room', 'user'])->makeVisible(['xml', 'qr_code'])
@@ -67,12 +63,7 @@ class InvoiceController extends Controller
      */
     public function cancel(Request $request, Invoice $invoice)
     {
-        abort_unless(
-            $invoice->status !== 'pending'
-                && ($request->user()->role === 'admin' || $invoice->user_id === $request->user()->id),
-            404,
-            'Invoice not found.'
-        );
+        $this->ensureCanSee($request, $invoice);
 
         if ($invoice->status !== 'issued') {
             return response()->json([
@@ -116,12 +107,31 @@ class InvoiceController extends Controller
             'rfc.regex' => 'The RFC format is not valid.',
         ]);
 
-        $reservation = Reservation::with('room')->findOrFail($validated['reservation_id']);
+        $reservation = Reservation::with(['room', 'hotel'])->findOrFail($validated['reservation_id']);
 
         abort_unless(
-            $request->user()->role === 'admin' || $reservation->user_id === $request->user()->id,
+            $request->user()->role === 'admin'
+                ? $reservation->hotel_id === $request->user()->hotel_id
+                : $reservation->user_id === $request->user()->id,
             404
         );
+
+        $hotel = $reservation->hotel;
+        $cost = (int) config('saas.credit_features.invoice.cost');
+
+        if (! $hotel->plan_active) {
+            return response()->json([
+                'message' => 'This hotel cannot issue invoices right now.',
+            ], 422);
+        }
+
+        if ($hotel->credits < $cost) {
+            return response()->json([
+                'message' => $request->user()->role === 'admin'
+                    ? "Not enough credits: {$cost} required, {$hotel->credits} available. Buy a credit package."
+                    : 'The hotel cannot issue invoices right now. Please contact the hotel.',
+            ], 402);
+        }
 
         $payment = $reservation->payments()->where('status', 'paid')->latest()->first();
 
@@ -141,6 +151,7 @@ class InvoiceController extends Controller
 
         $invoice = $reservation->invoices()->create([
             ...collect($validated)->except('reservation_id')->all(),
+            'hotel_id' => $reservation->hotel_id,
             'payment_id' => $payment->id,
             'user_id' => $reservation->user_id,
             'status' => 'pending',
@@ -181,8 +192,34 @@ class InvoiceController extends Controller
             'issued_at' => now(),
         ]);
 
+        // Each stamped CFDI costs the hotel credits, like the stamps a PAC sells.
+        try {
+            $hotel->spendCredits(
+                $cost,
+                'invoice',
+                "Factura {$invoice->series}{$invoice->folio} a {$invoice->name} ({$invoice->rfc})",
+                $request->user(),
+                "invoice:{$invoice->id}"
+            );
+        } catch (InsufficientCreditsException $exception) {
+            // Another request spent the last credits meanwhile; the CFDI is already stamped.
+            report($exception);
+        }
+
         ReservationNotifier::invoiced($reservation, $invoice, $request->user());
 
         return response()->json($invoice->fresh()->load('reservation.room'), 201);
+    }
+
+    private function ensureCanSee(Request $request, Invoice $invoice): void
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $invoice->status !== 'pending'
+                && ($user->role === 'admin' ? $invoice->hotel_id === $user->hotel_id : $invoice->user_id === $user->id),
+            404,
+            'Invoice not found.'
+        );
     }
 }

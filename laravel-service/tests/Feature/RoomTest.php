@@ -13,7 +13,7 @@ class RoomTest extends TestCase
 
     public function test_authenticated_user_can_register_a_room(): void
     {
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
+        $this->actingAs($this->admin())
             ->postJson('/api/rooms', [
                 'number' => '101',
                 'type' => 'double',
@@ -35,6 +35,7 @@ class RoomTest extends TestCase
     public function test_available_rooms_are_listed(): void
     {
         Room::create([
+            'hotel_id' => $this->hotel()->id,
             'number' => '201',
             'type' => 'single',
             'price' => 80,
@@ -42,6 +43,7 @@ class RoomTest extends TestCase
             'status' => 'available',
         ]);
         Room::create([
+            'hotel_id' => $this->hotel()->id,
             'number' => '202',
             'type' => 'single',
             'price' => 80,
@@ -49,7 +51,7 @@ class RoomTest extends TestCase
             'status' => 'occupied',
         ]);
 
-        $this->getJson('/api/rooms/available')
+        $this->getJson('/api/hotels/'.$this->hotel()->slug.'/rooms/available')
             ->assertOk()
             ->assertJsonCount(1)
             ->assertJsonPath('0.number', '201');
@@ -58,6 +60,7 @@ class RoomTest extends TestCase
     public function test_reserved_room_stays_available_outside_its_reserved_dates(): void
     {
         $room = Room::create([
+            'hotel_id' => $this->hotel()->id,
             'number' => '501',
             'type' => 'double',
             'price' => 100,
@@ -71,15 +74,15 @@ class RoomTest extends TestCase
             'status' => 'confirmed',
         ]);
 
-        $this->getJson('/api/rooms/available')
+        $this->getJson('/api/hotels/'.$this->hotel()->slug.'/rooms/available')
             ->assertOk()
             ->assertJsonCount(1);
 
-        $this->getJson('/api/rooms/available?check_in=2026-12-12&check_out=2026-12-18')
+        $this->getJson('/api/hotels/'.$this->hotel()->slug.'/rooms/available?check_in=2026-12-12&check_out=2026-12-18')
             ->assertOk()
             ->assertJsonCount(0);
 
-        $this->getJson('/api/rooms/available?check_in=2026-12-15&check_out=2026-12-18')
+        $this->getJson('/api/hotels/'.$this->hotel()->slug.'/rooms/available?check_in=2026-12-15&check_out=2026-12-18')
             ->assertOk()
             ->assertJsonCount(1)
             ->assertJsonPath('0.number', '501');
@@ -88,6 +91,7 @@ class RoomTest extends TestCase
     public function test_authenticated_user_can_change_room_status(): void
     {
         $room = Room::create([
+            'hotel_id' => $this->hotel()->id,
             'number' => '301',
             'type' => 'suite',
             'price' => 250,
@@ -95,7 +99,7 @@ class RoomTest extends TestCase
             'status' => 'available',
         ]);
 
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
+        $this->actingAs($this->admin())
             ->patchJson("/api/rooms/{$room->id}/status", ['status' => 'maintenance'])
             ->assertOk()
             ->assertJsonPath('status', 'maintenance');

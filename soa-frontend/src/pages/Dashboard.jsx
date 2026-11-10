@@ -9,6 +9,10 @@ import {
   logoutRequest,
   registerRequest,
 } from '../services/api.js'
+import { PLATFORM_NAME } from '../utils/brand.js'
+import { navigate } from '../utils/router.js'
+import { readSession, removeSession, saveSession } from '../utils/session.js'
+import { CATALOG_QUERY, HOTEL_ACCOUNT_FIELDS } from '../utils/saas.js'
 
 const EMPTY_ROOM = {
   number: '',
@@ -41,16 +45,19 @@ const EMPTY_BOOKING = {
   check_out: '',
 }
 
-function Dashboard() {
-  const [session, setSession] = useState(() => {
-    const saved = localStorage.getItem('soa-session')
-
-    try {
-      return saved ? JSON.parse(saved) : null
-    } catch {
-      return null
-    }
-  })
+/**
+ * Signed-in area: the hotel admin panel (/panel), the guest account (/mi-cuenta)
+ * and each hotel's booking page (/h/:slug). Shows the sign-in screens without a session.
+ */
+function Dashboard({ route }) {
+  const hotelSlug = route.page === 'hotel' ? route.slug : null
+  const [session, setSession] = useState(readSession)
+  // Public data of the hotel whose page the guest is on.
+  const [hotel, setHotel] = useState(null)
+  const [hotelError, setHotelError] = useState('')
+  // The admin's hotel: plan, credits, modules and time passes.
+  const [account, setAccount] = useState(null)
+  const [catalog, setCatalog] = useState(null)
 
   const [rooms, setRooms] = useState([])
   const [reservations, setReservations] = useState([])
@@ -85,18 +92,50 @@ function Dashboard() {
 
   const isAdmin = session?.user?.role === 'admin'
 
+  // Each kind of user has its own place: admins the panel, guests their account or a hotel page.
+  useEffect(() => {
+    if (!session) {
+      return
+    }
+
+    if (isAdmin && route.page !== 'panel') {
+      navigate('/panel', { replace: true })
+    } else if (!isAdmin && ['panel', 'login'].includes(route.page)) {
+      navigate('/mi-cuenta', { replace: true })
+    }
+  }, [session, isAdmin, route.page])
+
+  useEffect(() => {
+    setHotel(null)
+    setHotelError('')
+
+    if (!hotelSlug) {
+      return
+    }
+
+    graphqlRequest(
+      `query HotelPage($slug: String!) {
+        hotel(slug: $slug) { id name slug city description has_restaurant }
+      }`,
+      { slug: hotelSlug }
+    )
+      .then((data) => setHotel(data.hotel))
+      .catch(() => setHotelError('Este hotel no existe o no está disponible por ahora.'))
+  }, [hotelSlug])
+
   useEffect(() => {
     if (!session) {
       return
     }
 
     if (isAdmin) {
-      loadRooms()
-      loadReservations()
+      if (route.page === 'panel') {
+        loadAdminData()
+      }
     } else {
       loadCustomerData()
     }
-  }, [session, isAdmin])
+  }, [session, isAdmin, hotelSlug, route.page])
 
   useEffect(() => {
     if (!session || isAdmin || !customerDataReady) {
@@ -123,15 +162,21 @@ function Dashboard() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const result = params.get('payment')
+    const billing = params.get('billing')
     const paymentId = params.get('payment_id')
 
-    if (!session || !result || !paymentId) {
+    if (!session || !(result || billing) || !paymentId) {
       return
     }
 
     // Clear the query string first so a reload (or StrictMode) doesn't repeat it.
     window.history.replaceState(null, '', window.location.pathname)
-    handleCheckoutReturn(result, paymentId)
+
+    if (billing) {
+      handleBillingReturn(billing, paymentId)
+    } else {
+      handleCheckoutReturn(result, paymentId)
+    }
   }, [session])
 
   async function gql(query, variables = {}) {
@@ -144,6 +189,37 @@ function Dashboard() {
       }
 
       throw err
+    }
+  }
+
+  async function refreshAccount() {
+    try {
+      const data = await gql(`
+        query Account {
+          me { id hotel { ${HOTEL_ACCOUNT_FIELDS} rooms_used } }
+          ${catalog ? '' : CATALOG_QUERY}
+        }
+      `)
+
+      setAccount(data.me.hotel)
+
+      if (data.platformCatalog) {
+        setCatalog(data.platformCatalog)
+      }
+
+      return data.me.hotel
+    } catch (err) {
+      showError(err.message)
+      return null
+    }
+  }
+
+  async function loadAdminData() {
+    const hotelAccount = await refreshAccount()
+
+    // An expired plan only opens the "Mi plan" tab, so there is nothing else to load.
+    if (hotelAccount?.plan_active) {
+      await Promise.all([loadRooms(), loadReservations()])
     }
   }
 
@@ -170,14 +246,18 @@ function Dashboard() {
   }
 
   async function loadAvailableRooms() {
+    if (!hotelSlug) {
+      return
+    }
+
     const dates = bookingDates(booking)
     const request = ++roomsRequest.current
 
     try {
       const data = await gql(
         `
-        query GetAvailableRooms($checkIn: String, $checkOut: String) {
-          availableRooms(checkIn: $checkIn, checkOut: $checkOut) {
+        query GetAvailableRooms($hotelSlug: String!, $checkIn: String, $checkOut: String) {
+          availableRooms(hotelSlug: $hotelSlug, checkIn: $checkIn, checkOut: $checkOut) {
             id
             number
             type
@@ -189,7 +269,7 @@ function Dashboard() {
           }
         }
       `,
-        dates || {}
+        { hotelSlug, ...(dates || {}) }
       )
 
       // Ignore answers that arrive after the dates changed again.
@@ -271,8 +351,8 @@ function Dashboard() {
       const request = ++roomsRequest.current
       const data = await gql(
         `
-        query GetCustomerData($checkIn: String, $checkOut: String) {
-          availableRooms(checkIn: $checkIn, checkOut: $checkOut) {
+        query GetCustomerData($hotelSlug: String!, $checkIn: String, $checkOut: String, $withRooms: Boolean!) {
+          availableRooms(hotelSlug: $hotelSlug, checkIn: $checkIn, checkOut: $checkOut) @include(if: $withRooms) {
             id
             number
             type
@@ -283,6 +363,7 @@ function Dashboard() {
             status
           }
           reservations {
+            hotel { id name slug }
             id
             room_id
             user_id
@@ -311,7 +392,7 @@ function Dashboard() {
           }
         }
       `,
-        dates || {}
+        { hotelSlug: hotelSlug || '', withRooms: Boolean(hotelSlug), ...(dates || {}) }
       )
 
       if (request === roomsRequest.current) {
@@ -337,11 +418,7 @@ function Dashboard() {
         user: data.user,
       }
 
-      localStorage.setItem(
-        'soa-session',
-        JSON.stringify(newSession)
-      )
-
+      saveSession(newSession)
       setSession(newSession)
     } catch (err) {
       showError(err.message)
@@ -387,10 +464,14 @@ function Dashboard() {
     clearSession()
     setMessage('')
     setError('')
+
+    if (!hotelSlug) {
+      navigate('/')
+    }
   }
 
   function clearSession() {
-    localStorage.removeItem('soa-session')
+    removeSession()
 
     setSession(null)
     setRooms([])
@@ -400,6 +481,7 @@ function Dashboard() {
     setCustomerDataReady(false)
     setNotifications([])
     setUnreadCount(0)
+    setAccount(null)
   }
 
   async function loadNotifications() {
@@ -770,6 +852,42 @@ function Dashboard() {
     }
   }
 
+  async function handleBillingReturn(result, paymentId) {
+    clearMessage()
+
+    if (result !== 'success') {
+      setMessage('Pago cancelado. No se hizo ningún cargo.')
+      return
+    }
+
+    setBusy(true)
+
+    try {
+      const data = await gql(
+        `
+        mutation VerifyBillingPayment($id: ID!) {
+          verifyBillingPayment(id: $id) { id status purpose metadata }
+        }
+      `,
+        { id: paymentId }
+      )
+      const payment = data.verifyBillingPayment
+
+      if (payment.status !== 'paid') {
+        setMessage('Tu pago se está procesando. Se aplicará en cuanto Stripe lo confirme.')
+      } else if (payment.purpose === 'subscription') {
+        setMessage('Pago recibido. Tu plan está activo.')
+      } else {
+        setMessage(`Pago recibido. Se agregaron ${payment.metadata?.credits} créditos.`)
+      }
+    } catch (err) {
+      showError(err.message)
+    } finally {
+      setBusy(false)
+      await loadAdminData()
+    }
+  }
+
   async function cancelReservation(id) {
     const confirmed = window.confirm(
       '¿Seguro que deseas cancelar esta reservación?'
@@ -822,6 +940,7 @@ function Dashboard() {
     await Promise.all([
       isAdmin ? loadReservations() : loadCustomerData(),
       loadNotifications(),
+      isAdmin ? refreshAccount() : null,
     ])
   }
 
@@ -836,6 +955,8 @@ function Dashboard() {
     if (showRegister) {
       return (
         <Register
+          brand={hotel?.name || PLATFORM_NAME}
+          subtitle={hotel ? `Crea tu cuenta para reservar en ${hotel.name}.` : undefined}
           register={register}
           setRegister={setRegister}
           registerUser={registerUser}
@@ -852,6 +973,8 @@ function Dashboard() {
 
     return (
       <Login
+        brand={hotel?.name || PLATFORM_NAME}
+        subtitle={hotel ? `Inicia sesión para reservar en ${hotel.name}.` : undefined}
         login={login}
         setLogin={setLogin}
         loginUser={loginUser}
@@ -889,6 +1012,12 @@ function Dashboard() {
         notificationProps={notificationProps}
         gql={gql}
         onInvoiceIssued={reloadAfterInvoice}
+        account={account}
+        catalog={catalog}
+        refreshAccount={refreshAccount}
+        reloadAdminData={loadAdminData}
+        setMessage={setMessage}
+        showError={showError}
       />
     )
   }
@@ -910,6 +1039,9 @@ function Dashboard() {
       notificationProps={notificationProps}
       gql={gql}
       onInvoiceIssued={reloadAfterInvoice}
+      hotelSlug={hotelSlug}
+      hotel={hotel}
+      hotelError={hotelError}
     />
   )
 }

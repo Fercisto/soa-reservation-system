@@ -116,7 +116,7 @@ class ExternalPaymentTest extends TestCase
         [, $apiKey] = ApiClient::register('Restaurante');
         $this->postJson('/api/v1/payments', $this->paymentData(), ['X-Api-Key' => $apiKey]);
 
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
+        $this->actingAs($this->admin())
             ->getJson('/api/payments')
             ->assertOk()
             ->assertJsonCount(0);

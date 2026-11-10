@@ -26,7 +26,9 @@ class PaymentController extends Controller
         Reservation::expireStale();
 
         $query = $request->user()->role === 'admin'
-            ? Payment::query()->with(['reservation.room', 'user'])
+            ? Payment::query()
+                ->whereHas('reservation', fn ($query) => $query->where('hotel_id', $request->user()->hotel_id))
+                ->with(['reservation.room', 'user'])
             : $request->user()->payments()->with('reservation.room');
 
         // External systems' payments are served by the /v1/payments API, not here.
@@ -64,7 +66,10 @@ class PaymentController extends Controller
         Reservation::expireStale();
         $reservation = Reservation::with('room')->findOrFail($validated['reservation_id']);
 
-        abort_unless($isAdmin || $reservation->user_id === $request->user()->id, 404);
+        abort_unless(
+            $isAdmin ? $reservation->hotel_id === $request->user()->hotel_id : $reservation->user_id === $request->user()->id,
+            404
+        );
 
         if ($method === 'cash' && ! $isAdmin) {
             return response()->json([
@@ -102,6 +107,7 @@ class PaymentController extends Controller
 
                 $payment = $reservation->payments()->create([
                     'user_id' => $reservation->user_id,
+                    'hotel_id' => $reservation->hotel_id,
                     'amount' => $reservation->totalAmount(),
                     'currency' => config('services.payments.currency'),
                     'method' => 'cash',
@@ -168,9 +174,13 @@ class PaymentController extends Controller
 
     private function ownedPayment(Request $request, Payment $payment): Payment
     {
+        $user = $request->user();
+
         abort_unless(
             $payment->reservation_id
-                && ($request->user()->role === 'admin' || $payment->user_id === $request->user()->id),
+                && ($user->role === 'admin'
+                    ? $payment->reservation->hotel_id === $user->hotel_id
+                    : $payment->user_id === $user->id),
             404,
             'Payment not found.'
         );

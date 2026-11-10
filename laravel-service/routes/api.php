@@ -1,13 +1,18 @@
 <?php
 
 use App\Http\Controllers\AdminSummaryController;
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\ExternalClientSettingsController;
 use App\Http\Controllers\ExternalNotificationController;
 use App\Http\Controllers\ExternalPaymentController;
+use App\Http\Controllers\HotelController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\ReservationController;
 use Illuminate\Http\Request;
@@ -20,9 +25,16 @@ Route::get('/user', function (Request $request) {
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::get('/rooms', [RoomController::class, 'index']);
-Route::get('/rooms/available', [RoomController::class, 'available']);
-Route::get('/rooms/{room}', [RoomController::class, 'show']);
+// SaaS platform: catalog of plans, hotel sign-up and the hotels guests can book.
+Route::get('/plans', [HotelController::class, 'plans']);
+Route::post('/hotels', [HotelController::class, 'register']);
+Route::get('/hotels', [HotelController::class, 'index']);
+Route::get('/hotels/{slug}', [HotelController::class, 'show']);
+Route::get('/hotels/{slug}/rooms/available', [HotelController::class, 'availableRooms']);
+Route::get('/rooms/{room}', [RoomController::class, 'show'])->whereNumber('room');
+
+// Internal routes for the NestJS gateway (X-Gateway-Secret).
+Route::get('/internal/hotels/{slug}/restaurant', [HotelController::class, 'restaurantCredentials'])->middleware('gateway');
 
 Route::post('/payments/webhook', [PaymentController::class, 'webhook']);
 
@@ -47,10 +59,6 @@ Route::prefix('v1')->middleware('api.client')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
-    Route::post('/rooms', [RoomController::class, 'store'])->middleware('role:admin');
-    Route::put('/rooms/{room}', [RoomController::class, 'update'])->middleware('role:admin');
-    Route::patch('/rooms/{room}/status', [RoomController::class, 'updateStatus'])->middleware('role:admin');
-    Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->middleware('role:admin');
     Route::get('/reservations', [ReservationController::class, 'index']);
     Route::post('/reservations', [ReservationController::class, 'store']);
     Route::get('/reservations/{reservation}', [ReservationController::class, 'show']);
@@ -60,7 +68,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payments', [PaymentController::class, 'store']);
     Route::get('/payments/{payment}', [PaymentController::class, 'show']);
     Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify']);
-    Route::get('/admin/summary', AdminSummaryController::class)->middleware('role:admin');
     Route::get('/invoices', [InvoiceController::class, 'index']);
     Route::post('/invoices', [InvoiceController::class, 'store']);
     Route::get('/invoices/{invoice}', [InvoiceController::class, 'show']);
@@ -68,4 +75,39 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+
+    // The admin's hotel and its account with the platform; open with an expired plan so it can renew.
+    Route::middleware('hotel')->group(function () {
+        Route::get('/hotel', [HotelController::class, 'mine']);
+        Route::put('/hotel', [HotelController::class, 'update']);
+        Route::get('/billing/payments', [BillingController::class, 'payments']);
+        Route::post('/billing/subscription', [BillingController::class, 'subscribe']);
+        Route::post('/billing/credits', [BillingController::class, 'buyCredits']);
+        Route::post('/billing/payments/{payment}/verify', [BillingController::class, 'verify']);
+        Route::get('/billing/transactions', [BillingController::class, 'transactions']);
+        Route::get('/billing/passes', [BillingController::class, 'passes']);
+        Route::post('/billing/passes', [BillingController::class, 'buyPass']);
+    });
+
+    // Modules of the plan.
+    Route::middleware('hotel:active')->group(function () {
+        Route::get('/rooms', [RoomController::class, 'index']);
+        Route::post('/rooms', [RoomController::class, 'store']);
+        Route::put('/rooms/{room}', [RoomController::class, 'update']);
+        Route::patch('/rooms/{room}/status', [RoomController::class, 'updateStatus']);
+        Route::delete('/rooms/{room}', [RoomController::class, 'destroy']);
+
+        // Charged in credits.
+        Route::get('/reports', [ReportController::class, 'index']);
+        Route::post('/reports', [ReportController::class, 'store']);
+        Route::get('/reports/{report}', [ReportController::class, 'show']);
+        Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf']);
+    });
+
+    Route::get('/admin/summary', AdminSummaryController::class)->middleware('hotel:feature,overview');
+
+    // Accessed with a time pass.
+    Route::get('/analytics', AnalyticsController::class)->middleware('hotel:pass,analytics');
+    Route::get('/campaigns', [CampaignController::class, 'index'])->middleware('hotel:pass,campaigns');
+    Route::post('/campaigns', [CampaignController::class, 'store'])->middleware('hotel:pass,campaigns');
 });

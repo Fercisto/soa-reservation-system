@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\AuthenticateApiClient;
+use App\Http\Middleware\AuthenticateGateway;
+use App\Http\Middleware\EnsureHotelAccess;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'api.client' => AuthenticateApiClient::class,
+            'hotel' => EnsureHotelAccess::class,
+            'gateway' => AuthenticateGateway::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

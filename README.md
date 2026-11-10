@@ -1,10 +1,10 @@
-# SOA Reservation System
+# Hospedia: SaaS for hotels
 
 A Service-Oriented Architecture (SOA) project developed as an academic project to demonstrate communication between React, NestJS, and Laravel services.
 
 ## Overview
 
-The system is a hotel room reservation application split into three independent services:
+Hospedia is a multi-tenant platform: hotels subscribe to a plan (Bronze, Silver or Gold) to manage their hotel, buy credits for pay-per-use modules and time passes, and their guests book and pay online. It is split into three independent services:
 
 * **React frontend** (`soa-frontend`) – user interface. It talks **only** to NestJS, using **GraphQL**.
 * **NestJS gateway** (`nest-client`) – exposes a GraphQL API and forwards every operation to Laravel over **REST**.
@@ -37,6 +37,8 @@ The purpose of the project is to demonstrate interoperability between different 
 │                   │
 │  Business Logic   │
 │  Authentication   │
+│  Hotels (tenants) │
+│  Plans & credits ─┼──▶ Stripe Checkout
 │  Rooms            │
 │  Reservations     │
 │  Payments ────────┼──▶ Stripe Checkout
@@ -59,7 +61,9 @@ Laravel is the main backend service and contains the core business logic.
 Responsibilities:
 
 * User registration, login and logout (Laravel Sanctum tokens)
-* Roles: `admin` and `customer`
+* Roles: `admin` (of one hotel) and `customer` (a guest who can book at any hotel)
+* Hotels as tenants: every room, reservation and invoice belongs to a hotel, and admins only see their hotel's data
+* Subscriptions, credits (with a ledger of every movement) and time passes, see [SaaS platform](#saas-platform)
 * Room management (admin only for create / update / delete / status changes)
 * Reservation management with date-conflict detection
 * Payment registration and verification through Stripe Checkout
@@ -74,15 +78,19 @@ Responsibilities:
 | POST | `/register` | – | Create a customer account and return a token |
 | POST | `/login` | – | Return a token |
 | POST | `/logout` | token | Revoke the current token |
-| GET | `/me` | token | Current user |
-| GET | `/rooms` | – | All rooms |
-| GET | `/rooms/available?check_in=&check_out=` | – | Rooms with status `available`; if both dates are given, rooms with an overlapping reservation are excluded |
+| GET | `/me` | token | Current user; admins also get their `hotel` (plan, credits, modules) and `active_passes` |
+| GET | `/plans` | – | Platform catalog: plans, credit packages, modules charged in credits and time passes |
+| POST | `/hotels` | – | Sign up a hotel and its first admin; returns a token and the Stripe checkout of the plan |
+| GET | `/hotels` | – | Hotels with an active plan (the ones guests can book) |
+| GET | `/hotels/{slug}` | – | A hotel's public data |
+| GET | `/hotels/{slug}/rooms/available?check_in=&check_out=` | – | The hotel's rooms with status `available`; with both dates, rooms with an overlapping reservation are excluded |
 | GET | `/rooms/{id}` | – | Room detail |
-| POST | `/rooms` | admin | Create room |
-| PUT | `/rooms/{id}` | admin | Update room |
-| PATCH | `/rooms/{id}/status` | admin | Change room status |
-| DELETE | `/rooms/{id}` | admin | Delete room (only if it has no reservations) |
-| GET | `/reservations` | token | Own reservations (admin: all reservations) |
+| GET | `/rooms` | hotel admin | Rooms of the admin's hotel |
+| POST | `/rooms` | hotel admin | Create room (up to the plan's room limit) |
+| PUT | `/rooms/{id}` | hotel admin | Update room |
+| PATCH | `/rooms/{id}/status` | hotel admin | Change room status |
+| DELETE | `/rooms/{id}` | hotel admin | Delete room (only if it has no reservations) |
+| GET | `/reservations` | token | Own reservations at every hotel (admin: the hotel's reservations) |
 | POST | `/reservations` | token | Reserve and start the card payment: returns the `pending` reservation with `latest_payment.checkout_url` |
 | GET | `/reservations/{id}` | token | Reservation detail |
 | PATCH | `/reservations/{id}/dates` | token | Change dates (only reservations without a payment in progress or completed) |
@@ -96,7 +104,18 @@ Responsibilities:
 | POST | `/invoices` | token | Invoice a paid reservation with the customer's fiscal data |
 | GET | `/invoices/{id}` | token | Invoice detail with the stamped `xml` and `qr_code` |
 | POST | `/invoices/{id}/cancel` | token | Cancel the CFDI with the SAT; the reservation stays paid and can be invoiced again |
-| GET | `/admin/summary` | admin | Dashboard KPIs: month income, refunds and invoicing, today's occupancy, arrivals and departures, pending payments, paid but not invoiced, upcoming arrivals |
+| GET | `/hotel`, PUT `/hotel` | hotel admin | The admin's hotel and its settings (name, city, description, restaurant API key) |
+| GET | `/billing/payments` | hotel admin | Subscription and credit payments |
+| POST | `/billing/subscription` | hotel admin | Pay a plan (`{ plan }`): returns the Stripe `checkout_url` |
+| POST | `/billing/credits` | hotel admin | Buy a credit package (`{ package }`): returns the Stripe `checkout_url` |
+| POST | `/billing/payments/{id}/verify` | hotel admin | Check the payment with Stripe and activate the plan or add the credits |
+| GET | `/billing/transactions` | hotel admin | Credit ledger |
+| GET | `/billing/passes`, POST `/billing/passes` | hotel admin | Time passes; buy one with `{ feature, unit, quantity }` |
+| GET, POST | `/reports`, GET `/reports/{id}`, GET `/reports/{id}/pdf` | active plan | Occupancy and income reports (cost credits) and their PDF |
+| GET | `/analytics` | time pass | Advanced analytics |
+| GET, POST | `/campaigns` | time pass | Campaigns to the hotel's guests |
+| GET | `/internal/hotels/{slug}/restaurant` | `X-Gateway-Secret` | The hotel's restaurant API key, for NestJS only |
+| GET | `/admin/summary` | Silver or Gold | Dashboard KPIs: month income, refunds and invoicing, today's occupancy, arrivals and departures, pending payments, paid but not invoiced, upcoming arrivals |
 | GET | `/notifications?unread=&limit=` | token | Current user's notifications (newest first) and `unread_count` |
 | PATCH | `/notifications/{id}/read` | token | Mark one notification as read |
 | PATCH | `/notifications/read-all` | token | Mark all notifications as read |
@@ -107,7 +126,8 @@ Responsibilities:
 * A reservation can only be created or moved if the room status is `available`.
 * `check_in` cannot be in the past and `check_out` must be after `check_in`.
 * Two non-cancelled reservations for the same room cannot overlap.
-* Customers can only see and modify their own reservations; admins can see, modify and cancel any reservation.
+* Customers can only see and modify their own reservations; admins can see, modify and cancel any reservation of their hotel.
+* Only hotels with an active plan accept reservations and appear to guests.
 * Cancelled reservations cannot be modified.
 * Reserving and paying is one step: a new reservation starts as `pending` with a payment window (`expires_at`, `PAYMENT_HOLD_MINUTES`, 35 by default) and becomes `confirmed` when its payment is `paid`.
 * A `pending` reservation blocks its dates. If it is not paid in time it becomes `expired` and the dates are released (checked on every reservation, availability and payment request, so no cron job is needed). A 10-minute grace period lets a payment made right before the deadline still be confirmed.
@@ -115,7 +135,7 @@ Responsibilities:
 * The payment amount is computed on the server: room price × nights.
 * A reservation can only have one paid payment; reservations with a payment in progress or completed cannot change dates.
 * Cancelling a paid reservation refunds the payment (status `refunded`) and cancels its invoice with the SAT.
-* Only `confirmed` reservations with a `paid` payment can be invoiced, once.
+* Only `confirmed` reservations with a `paid` payment can be invoiced, once. Each stamped CFDI costs the hotel 1 credit.
 
 ### NestJS Gateway
 
@@ -134,9 +154,16 @@ Responsibilities:
 | ---- | --------- | ---- |
 | Mutation | `login(input)`, `register(input)` | – |
 | Mutation | `logout` | token |
-| Query | `me` | token |
-| Query | `rooms`, `room(id)`, `availableRooms(checkIn, checkOut)` | – |
-| Mutation | `createRoom`, `updateRoom`, `updateRoomStatus`, `deleteRoom` | admin |
+| Query | `me` (admins get `hotel { plan credits features active_passes ... }`) | token |
+| Query | `platformCatalog`, `hotels`, `hotel(slug)` | – |
+| Mutation | `registerHotel(input)` | – |
+| Query | `room(id)`, `availableRooms(hotelSlug, checkIn, checkOut)` | – |
+| Query | `rooms` | hotel admin |
+| Mutation | `createRoom`, `updateRoom`, `updateRoomStatus`, `deleteRoom` | hotel admin |
+| Query | `myHotel`, `billingPayments`, `creditTransactions`, `featurePasses` | hotel admin |
+| Mutation | `updateMyHotel`, `subscribe(plan)`, `buyCredits(package)`, `verifyBillingPayment(id)`, `buyPass(input)` | hotel admin |
+| Query | `reports`, `reportPdf(id)` (base64), `analytics`, `campaigns` | hotel admin |
+| Mutation | `generateReport(from, to)`, `sendCampaign(input)` | hotel admin |
 | Query | `reservations`, `reservation(id)` | token |
 | Mutation | `createReservation`, `updateReservationDates`, `cancelReservation` | token |
 | Query | `payments(status, reservationId)`, `payment(id)` | token |
@@ -155,13 +182,14 @@ The frontend is built with React and Vite.
 
 Features:
 
+* Routes (History API, no router library): `/` home page with the plans and the hotels, `/registrar-hotel` hotel sign-up, `/login`, `/h/:slug` a hotel's page, `/panel` hotel admin panel, `/mi-cuenta` guest account
 * Login and registration
-* **Customer view**, with a menu of four sections:
-  * **Reservar:** available rooms for the chosen dates; reserve and pay with Stripe in one step
-  * **Mis reservaciones:** resume a pending payment, cancel, and request or open the invoice of a paid reservation
-  * **Restaurante:** the hotel restaurant menu
+* **Guest view** on a hotel's page (`/h/:slug`):
+  * **Reservar:** the hotel's available rooms for the chosen dates; reserve and pay with Stripe in one step
+  * **Mis reservaciones:** stays at every hotel; resume a pending payment, cancel, and request or open the invoice of a paid reservation
+  * **Restaurante:** the hotel's menu (only Gold hotels with the restaurant configured)
   * **Facturas:** own invoices; download the XML or print / save as PDF
-* **Admin view:** **Resumen** tab with KPIs (income and occupancy, arrivals, pending payments, invoicing, upcoming arrivals); create, edit and delete rooms; view active reservations with their payment status, register cash payments and cancel reservations; list every invoice (tab **Facturas**)
+* **Admin panel** (`/panel`): tabs **Resumen**, **Habitaciones**, **Menú**, **Personal**, **Facturas**, **Reportes**, **Analítica**, **Campañas** and **Mi plan**. Modules outside the plan show as locked with the plan that includes them; time-pass modules offer to buy a pass and show the remaining time.
 * Notification bell in the header with an unread badge; it refreshes every 30 seconds and after paying or cancelling
 * Logout revokes the token in Laravel
 * If the stored token is expired or invalid, the session is cleared and the user is sent back to the login screen
@@ -268,9 +296,45 @@ React bell ──GraphQL──▶ NestJS ──REST──▶ GET /api/notificati
 
 The classes are in `laravel-service/app/Notifications`: `ReservationConfirmed`, `ReservationCancelled` and `ReservationNotifier`, which decides who receives each notification.
 
+## SaaS platform
+
+### Plans
+
+Hotels pay their plan for periods of 30 days with Stripe Checkout. Renewing the same plan adds 30 days to the end of the current period; a different plan (upgrade or downgrade) starts today. Without an active plan the admin panel only opens **Mi plan**, and guests cannot book at the hotel.
+
+| Module | Bronze ($499) | Silver ($999) | Gold ($1,999) |
+| ------ | :-----------: | :-----------: | :-----------: |
+| Rooms, online reservations, card payments, notifications | ✓ | ✓ | ✓ |
+| Rooms | up to 10 | up to 30 | unlimited |
+| Resumen (KPIs) | – | ✓ | ✓ |
+| Personal y turnos | – | ✓ | ✓ |
+| Menú del restaurante | – | – | ✓ |
+| Credits included every period | – | – | 50 |
+
+### Credits and accountability
+
+Hotels buy credit packages with Stripe (50 credits $199, 150 credits $499, 400 credits $999) and spend them in four special modules:
+
+| Module | Access | Cost |
+| ------ | ------ | ---- |
+| Facturación CFDI | Per use | 1 credit per stamped invoice |
+| Reporte PDF de ocupación e ingresos | Per use | 3 credits per report (it can be downloaded again for free) |
+| Analítica avanzada | Time pass | 1 credit / 15 min · 2 / hour · 10 / day |
+| Campañas a huéspedes | Time pass | 1 credit / 15 min · 3 / hour · 15 / day |
+
+Every movement is recorded in the `credit_transactions` ledger with its type (`purchase`, `bonus`, `usage`), the module, the user who made it, a reference (`invoice:12`, `report:3`, `pass:5`, `payment:8`) and the balance after it, so the balance can always be explained. Admins see it in **Mi plan → Movimientos de créditos**, next to the payments to the platform.
+
+A time pass bought while another one of the same module runs is chained after it. Plans, packages and prices live in `laravel-service/config/saas.php`.
+
+### Where the rules are enforced
+
+* Laravel: `EnsureHotelAccess` middleware (`hotel`, `hotel:active`, `hotel:feature,overview`, `hotel:pass,analytics`), the room limit in `RoomController`, credits in `Hotel::spendCredits()` (locked row, ledger entry in the same transaction).
+* NestJS: the restaurant and staff modules (classmate's services) check the plan from the admin's `me` and use the hotel's own API key.
+* React only hides or locks what the plan does not include; it never decides access.
+
 ## External services consumed (restaurant system)
 
-The hotel consumes two services of a classmate's restaurant system (Java microservices). They are multi-tenant: the hotel identifies itself with an API key and only sees and manages its own data.
+The hotel consumes two services of a classmate's restaurant system (Java microservices). They are multi-tenant: each hotel identifies itself with its own API key and only sees and manages its own data.
 
 | Service | Port | Used for |
 | ------- | ---- | -------- |
@@ -285,19 +349,19 @@ NestJS calls them from `src/restaurant` and exposes:
 
 | Type | Operation | Who |
 | ---- | --------- | --- |
-| Query | `menuCategories`, `menuDishes(categoryId)` | Any signed-in user |
-| Mutation | `createMenuCategory`, `updateMenuCategory`, `deleteMenuCategory`, `createDish`, `updateDish`, `deleteDish` | Admin |
-| Query | `employees(role, shift, active)`, `employeeRoles`, `employeeShifts` | Admin |
-| Mutation | `createEmployee`, `updateEmployee`, `deleteEmployee` | Admin |
+| Query | `menuCategories(hotelSlug)`, `menuDishes(hotelSlug, categoryId)` | Anyone, for Gold hotels; without `hotelSlug`, the admin's own hotel |
+| Mutation | `createMenuCategory`, `updateMenuCategory`, `deleteMenuCategory`, `createDish`, `updateDish`, `deleteDish` | Admin of a Gold hotel |
+| Query | `employees(role, shift, active)`, `employeeRoles`, `employeeShifts` | Admin of a Silver or Gold hotel |
+| Mutation | `createEmployee`, `updateEmployee`, `deleteEmployee` | Admin of a Silver or Gold hotel |
 
-The frontend shows them in the admin panel (tabs **Menú** and **Personal**) and in the customer panel (section **Restaurante**, available dishes only).
+Each hotel saves the API key the restaurant system gave it in **Mi plan → Datos del hotel**. Laravel keeps it encrypted and NestJS reads it from the internal route `/internal/hotels/{slug}/restaurant`, authenticated with `GATEWAY_SECRET` (the same value in both `.env` files).
 
-Configuration in `nest-client/.env` (see `nest-client/.env.example`; the file is loaded automatically and ignored by git):
+The service URLs go in `nest-client/.env` (see `nest-client/.env.example`; the file is loaded automatically and ignored by git):
 
 ```env
+GATEWAY_SECRET=<same value as in laravel-service/.env>
 RESTAURANT_MENU_URL=http://<RESTAURANT-IP>:8083/api/v1/menu
 RESTAURANT_EMPLOYEES_URL=http://<RESTAURANT-IP>:8084/api/v1/employees
-RESTAURANT_API_KEY=<key provided by the restaurant system>
 ```
 
 ## Running the project
@@ -314,6 +378,8 @@ php artisan key:generate
 php artisan migrate --seed
 php artisan serve
 ```
+
+The migration that turns the app into a platform moves existing rooms, reservations, invoices and admins to a first hotel, **Hotel Casa Jacaranda**, with the Gold plan for 30 days and 50 credits.
 
 Payment variables in `laravel-service/.env`:
 
@@ -338,16 +404,18 @@ Invoicing variables (the defaults use Profact's test environment, see [Invoices]
 | `PROFACT_VERIFY_SSL` | Verify Profact's TLS certificate, default `false` (the test server's certificate is not trusted) |
 | `INVOICE_SERIES` | CFDI series, default `H`; the folio is the invoice id |
 | `HOTEL_TIMEZONE` | Time zone for invoice dates and the admin summary ("today", "this month"), default `America/Mexico_City` |
+| `GATEWAY_SECRET` | Shared with `nest-client`; lets NestJS read each hotel's restaurant API key |
 | `INVOICE_EMITTER_RFC`, `INVOICE_EMITTER_NAME`, `INVOICE_EMITTER_TAX_REGIME`, `INVOICE_EMITTER_POSTAL_CODE` | The hotel's fiscal data, default the SAT test emitter `IIA040805DZ4` |
 
 Invoicing needs the PHP **soap** extension: uncomment `extension=soap` in `php.ini` (in Laragon: *Menu → PHP → Extensions → soap*) and restart the server.
 
-The seeder creates two demo users (password `password`):
+The seeder creates two demo hotels and their users (password `password`):
 
-| Email | Role |
-| ----- | ---- |
-| `admin@example.com` | admin |
-| `customer@example.com` | customer |
+| Email | Role | Hotel |
+| ----- | ---- | ----- |
+| `admin@example.com` | admin | Hotel Casa Jacaranda (`/h/casa-jacaranda`), Gold |
+| `admin@marazul.com` | admin | Hotel Mar Azul (`/h/mar-azul`), Bronze |
+| `customer@example.com` | customer (guest) | – |
 
 ### 2. NestJS (port 3000)
 
@@ -360,7 +428,9 @@ npm run start:dev
 Environment variables:
 
 * `PORT` – default `3000`
-* `AUTH_SERVICE_URL` – Laravel API base URL, default `http://127.0.0.1:8000/api` (used for auth, rooms and reservations)
+* `AUTH_SERVICE_URL` – Laravel API base URL, default `http://127.0.0.1:8000/api`
+* `GATEWAY_SECRET` – same value as in `laravel-service/.env`
+* `RESTAURANT_MENU_URL`, `RESTAURANT_EMPLOYEES_URL` – the restaurant system's services
 
 GraphQL playground: <http://localhost:3000/graphql>
 
@@ -388,6 +458,7 @@ cd nest-client && npm test
 * PHP, Laravel, Laravel Sanctum
 * Stripe Checkout (`stripe/stripe-php`)
 * Profact PAC (SOAP) for CFDI 4.0 invoices
+* dompdf (`barryvdh/laravel-dompdf`) for PDF reports
 * Node.js, NestJS, Apollo GraphQL, Axios
 * React, Vite
 * GraphQL, REST, HTTP, JSON

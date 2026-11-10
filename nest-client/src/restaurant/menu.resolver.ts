@@ -1,79 +1,123 @@
-import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { UseGuards } from '@nestjs/common';
+import { Args, Context, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { UnauthorizedException, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/auth.guard.js';
-import { AdminGuard } from './admin.guard.js';
+import { AuthService } from '../auth/auth.service.js';
+import { CurrentUser } from '../auth/auth.decorator.js';
 import { Dish, DishInput, MenuCategory } from './restaurant.models.js';
+import { RestaurantAccess } from './restaurant-access.js';
 import { RestaurantService } from './restaurant.service.js';
 
 /**
- * Hotel restaurant menu. Data lives in the classmate's menu-service; any signed-in
- * user can read it and only admins can change it.
+ * Hotel restaurant menu (Gold plan), stored in the classmate's menu-service with
+ * the hotel's own API key. Guests read it by hotel; the hotel's admins manage it.
  */
 @Resolver(() => Dish)
 export class MenuResolver {
-  constructor(private readonly restaurantService: RestaurantService) {}
+  constructor(
+    private readonly restaurantService: RestaurantService,
+    private readonly access: RestaurantAccess,
+    private readonly authService: AuthService,
+  ) {}
 
-  @UseGuards(AuthGuard)
-  @Query(() => [MenuCategory])
-  menuCategories(): Promise<MenuCategory[]> {
-    return this.restaurantService.findCategories();
+  @Query(() => [MenuCategory], {
+    description: "A hotel's menu categories; without hotelSlug, the admin's own hotel",
+  })
+  async menuCategories(
+    @Context() context: any,
+    @Args('hotelSlug', { nullable: true }) hotelSlug?: string,
+  ): Promise<MenuCategory[]> {
+    return this.restaurantService.findCategories(await this.readKey(context, hotelSlug));
   }
 
-  @UseGuards(AuthGuard)
-  @Query(() => [Dish])
-  menuDishes(
+  @Query(() => [Dish], {
+    description: "A hotel's dishes; without hotelSlug, the admin's own hotel",
+  })
+  async menuDishes(
+    @Context() context: any,
+    @Args('hotelSlug', { nullable: true }) hotelSlug?: string,
     @Args('categoryId', { type: () => Int, nullable: true })
     categoryId?: number,
   ): Promise<Dish[]> {
-    return this.restaurantService.findDishes(categoryId);
+    return this.restaurantService.findDishes(await this.readKey(context, hotelSlug), categoryId);
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard)
   @Mutation(() => MenuCategory)
-  createMenuCategory(@Args('name') name: string): Promise<MenuCategory> {
-    return this.restaurantService.createCategory(name);
+  async createMenuCategory(
+    @CurrentUser() user: any,
+    @Args('name') name: string,
+  ): Promise<MenuCategory> {
+    return this.restaurantService.createCategory(await this.adminKey(user), name);
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard)
   @Mutation(() => MenuCategory)
-  updateMenuCategory(
+  async updateMenuCategory(
+    @CurrentUser() user: any,
     @Args('id', { type: () => ID }) id: string,
     @Args('name') name: string,
   ): Promise<MenuCategory> {
-    return this.restaurantService.updateCategory(id, name);
+    return this.restaurantService.updateCategory(await this.adminKey(user), id, name);
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard)
   @Mutation(() => Boolean)
   async deleteMenuCategory(
+    @CurrentUser() user: any,
     @Args('id', { type: () => ID }) id: string,
   ): Promise<boolean> {
-    await this.restaurantService.deleteCategory(id);
+    await this.restaurantService.deleteCategory(await this.adminKey(user), id);
     return true;
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard)
   @Mutation(() => Dish)
-  createDish(@Args('input') input: DishInput): Promise<Dish> {
-    return this.restaurantService.createDish(input);
+  async createDish(
+    @CurrentUser() user: any,
+    @Args('input') input: DishInput,
+  ): Promise<Dish> {
+    return this.restaurantService.createDish(await this.adminKey(user), input);
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard)
   @Mutation(() => Dish)
-  updateDish(
+  async updateDish(
+    @CurrentUser() user: any,
     @Args('id', { type: () => ID }) id: string,
     @Args('input') input: DishInput,
   ): Promise<Dish> {
-    return this.restaurantService.updateDish(id, input);
+    return this.restaurantService.updateDish(await this.adminKey(user), id, input);
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard)
   @Mutation(() => Boolean)
   async deleteDish(
+    @CurrentUser() user: any,
     @Args('id', { type: () => ID }) id: string,
   ): Promise<boolean> {
-    await this.restaurantService.deleteDish(id);
+    await this.restaurantService.deleteDish(await this.adminKey(user), id);
     return true;
+  }
+
+  private adminKey(user: any): Promise<string> {
+    return this.access.keyForAdmin(user, 'restaurant');
+  }
+
+  /**
+   * Guests read a hotel's menu by its slug, without signing in. Admins omit it to read their own.
+   */
+  private async readKey(context: any, hotelSlug?: string): Promise<string> {
+    if (hotelSlug) {
+      return this.access.keyForGuests(hotelSlug);
+    }
+
+    const authorization = context?.req?.headers?.authorization;
+
+    if (!authorization) {
+      throw new UnauthorizedException('Authorization token is required');
+    }
+
+    return this.adminKey(await this.authService.getUser(authorization));
   }
 }

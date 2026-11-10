@@ -2,42 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Reservation;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
+/**
+ * Rooms of the admin's hotel. Guests list a hotel's rooms through HotelController.
+ */
 class RoomController extends Controller
 {
-    public function index()
+    private const STATUSES = ['available', 'occupied', 'maintenance', 'inactive'];
+
+    public function index(Request $request)
     {
-        return response()->json(Room::query()->latest()->get());
-    }
-
-    public function available(Request $request)
-    {
-        $validated = $request->validate([
-            'check_in' => 'nullable|required_with:check_out|date_format:Y-m-d',
-            'check_out' => 'nullable|required_with:check_in|date_format:Y-m-d|after:check_in',
-        ]);
-
-        $checkIn = $validated['check_in'] ?? null;
-        $checkOut = $validated['check_out'] ?? null;
-
-        Reservation::expireStale();
-
         return response()->json(
-            Room::query()
-                ->where('status', 'available')
-                ->when($checkIn && $checkOut, function ($query) use ($checkIn, $checkOut) {
-                    $query->whereDoesntHave('reservations', function ($query) use ($checkIn, $checkOut) {
-                        $query->whereIn('status', Reservation::ACTIVE_STATUSES)
-                            ->where('check_in', '<', $checkOut)
-                            ->where('check_out', '>', $checkIn);
-                    });
-                })
-                ->latest()
-                ->get()
+            $request->user()->hotel->rooms()->orderBy('number')->get()
         );
     }
 
@@ -48,17 +27,25 @@ class RoomController extends Controller
 
     public function store(Request $request)
     {
+        $hotel = $request->user()->hotel;
+
         $validated = $request->validate([
-            'number' => 'required|string|max:50|unique:rooms,number',
+            'number' => ['required', 'string', 'max:50', Rule::unique('rooms', 'number')->where('hotel_id', $hotel->id)],
             'type' => 'required|string|max:100',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'capacity' => 'required|integer|min:1',
             'features' => 'nullable|array',
-            'status' => ['sometimes', 'string', Rule::in(['available', 'occupied', 'maintenance', 'inactive'])],
+            'status' => ['sometimes', 'string', Rule::in(self::STATUSES)],
         ]);
 
-        $room = Room::create([
+        if ($hotel->room_limit !== null && $hotel->rooms()->count() >= $hotel->room_limit) {
+            return response()->json([
+                'message' => "Your {$hotel->plan_name} plan allows up to {$hotel->room_limit} rooms. Upgrade your plan to add more.",
+            ], 403);
+        }
+
+        $room = $hotel->rooms()->create([
             ...$validated,
             'status' => $validated['status'] ?? 'available',
         ]);
@@ -68,8 +55,10 @@ class RoomController extends Controller
 
     public function updateStatus(Request $request, Room $room)
     {
+        $room = $this->owned($request, $room);
+
         $validated = $request->validate([
-            'status' => ['required', 'string', Rule::in(['available', 'occupied', 'maintenance', 'inactive'])],
+            'status' => ['required', 'string', Rule::in(self::STATUSES)],
         ]);
 
         $room->update(['status' => $validated['status']]);
@@ -79,14 +68,19 @@ class RoomController extends Controller
 
     public function update(Request $request, Room $room)
     {
+        $room = $this->owned($request, $room);
+
         $validated = $request->validate([
-            'number' => ['required', 'string', 'max:50', Rule::unique('rooms', 'number')->ignore($room->id)],
+            'number' => [
+                'required', 'string', 'max:50',
+                Rule::unique('rooms', 'number')->where('hotel_id', $room->hotel_id)->ignore($room->id),
+            ],
             'type' => 'required|string|max:100',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'capacity' => 'required|integer|min:1',
             'features' => 'nullable|array',
-            'status' => ['required', 'string', Rule::in(['available', 'occupied', 'maintenance', 'inactive'])],
+            'status' => ['required', 'string', Rule::in(self::STATUSES)],
         ]);
 
         $room->update($validated);
@@ -94,8 +88,10 @@ class RoomController extends Controller
         return response()->json($room->fresh());
     }
 
-    public function destroy(Room $room)
+    public function destroy(Request $request, Room $room)
     {
+        $room = $this->owned($request, $room);
+
         if ($room->reservations()->exists()) {
             return response()->json([
                 'message' => 'Rooms with reservations cannot be deleted.',
@@ -105,5 +101,12 @@ class RoomController extends Controller
         $room->delete();
 
         return response()->noContent();
+    }
+
+    private function owned(Request $request, Room $room): Room
+    {
+        abort_unless($room->hotel_id === $request->user()->hotel_id, 404, 'Room not found.');
+
+        return $room;
     }
 }

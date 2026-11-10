@@ -1,6 +1,7 @@
 import { Field, Float, ID, Int, ObjectType } from '@nestjs/graphql';
 import { User } from '../../auth/models/user.model.js';
 import { PaymentReservation } from '../../payments/models/payment.model.js';
+import { HotelRef } from '../../platform/platform.models.js';
 
 @ObjectType({ description: 'CFDI 4.0 stamped through the Profact PAC' })
 export class Invoice {
@@ -84,4 +85,7 @@ export class Invoice {
 
   @Field(() => User, { nullable: true })
   user?: User;
+
+  @Field(() => HotelRef, { nullable: true })
+  hotel?: HotelRef;
 }

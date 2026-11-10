@@ -42,6 +42,11 @@ return [
         'frontend_url' => rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/'),
     ],
 
+    // Shared secret the NestJS gateway sends to internal routes (X-Gateway-Secret).
+    'gateway' => [
+        'secret' => env('GATEWAY_SECRET'),
+    ],
+
     'hotel' => [
         // Defines "today" and "this month" for the admin dashboard and the invoice dates.
         'timezone' => env('HOTEL_TIMEZONE', 'America/Mexico_City'),

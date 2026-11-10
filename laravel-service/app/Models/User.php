@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -26,6 +27,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'hotel_id',
     ];
 
     /**
@@ -54,6 +56,14 @@ class User extends Authenticatable
     public function reservations(): HasMany
     {
         return $this->hasMany(Reservation::class);
+    }
+
+    /**
+     * The hotel an admin manages. Guests (customers) have no hotel: they book at any of them.
+     */
+    public function hotel(): BelongsTo
+    {
+        return $this->belongsTo(Hotel::class);
     }
 
     public function payments(): HasMany

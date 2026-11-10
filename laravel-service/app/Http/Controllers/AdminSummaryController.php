@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Room;
+use Illuminate\Http\Request;
 
 /**
  * Key figures for the admin dashboard: this month's income and invoicing,
@@ -15,40 +16,44 @@ class AdminSummaryController extends Controller
 {
     private const UPCOMING_DAYS = 7;
 
-    public function __invoke()
+    public function __invoke(Request $request)
     {
         Reservation::expireStale();
+
+        $hotelId = $request->user()->hotel_id;
 
         $now = now(config('services.hotel.timezone'));
         $today = $now->toDateString();
         $monthStart = $now->copy()->startOfMonth()->utc();
 
         $paidThisMonth = Payment::query()
-            ->whereNotNull('reservation_id')
+            ->whereHas('reservation', fn ($query) => $query->where('hotel_id', $hotelId))
             ->where('status', 'paid')
             ->where('paid_at', '>=', $monthStart);
 
         $refundedThisMonth = Payment::query()
-            ->whereNotNull('reservation_id')
+            ->whereHas('reservation', fn ($query) => $query->where('hotel_id', $hotelId))
             ->where('status', 'refunded')
             ->where('updated_at', '>=', $monthStart);
 
         $issuedThisMonth = Invoice::query()
+            ->where('hotel_id', $hotelId)
             ->where('status', 'issued')
             ->where('issued_at', '>=', $monthStart);
 
-        $confirmed = Reservation::query()->where('status', 'confirmed');
+        $confirmed = Reservation::query()->where('hotel_id', $hotelId)->where('status', 'confirmed');
 
         $occupiedRooms = (clone $confirmed)
             ->where('check_in', '<=', $today)
             ->where('check_out', '>', $today)
             ->distinct()
             ->count('room_id');
-        $rooms = Room::where('status', '!=', 'inactive')->count();
+        $rooms = Room::where('hotel_id', $hotelId)->where('status', '!=', 'inactive')->count();
 
         $uninvoicedPayments = Payment::query()
             ->where('status', 'paid')
             ->whereHas('reservation', fn ($query) => $query
+                ->where('hotel_id', $hotelId)
                 ->where('status', 'confirmed')
                 ->whereDoesntHave('invoices', fn ($query) => $query->whereIn('status', ['pending', 'issued'])));
 
@@ -68,7 +73,7 @@ class AdminSummaryController extends Controller
             'arrivals_today' => (clone $confirmed)->where('check_in', $today)->count(),
             'departures_today' => (clone $confirmed)->where('check_out', $today)->count(),
             'active_reservations' => (clone $confirmed)->where('check_out', '>', $today)->count(),
-            'pending_payments' => Reservation::where('status', 'pending')->count(),
+            'pending_payments' => Reservation::where('hotel_id', $hotelId)->where('status', 'pending')->count(),
             'upcoming_arrivals' => (clone $confirmed)
                 ->whereBetween('check_in', [$today, $now->copy()->addDays(self::UPCOMING_DAYS)->toDateString()])
                 ->with(['room', 'user', 'latestPayment'])

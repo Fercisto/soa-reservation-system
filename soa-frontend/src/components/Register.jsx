@@ -1,4 +1,5 @@
-import { HOTEL_NAME } from '../utils/brand.js'
+import { PLATFORM_NAME } from '../utils/brand.js'
+import { linkProps } from '../utils/router.js'
 
 function Register({
   register,
@@ -8,6 +9,8 @@ function Register({
   error,
   message,
   onLogin,
+  brand = PLATFORM_NAME,
+  subtitle,
 }) {
   return (
     <main className="simple-login">
@@ -18,12 +21,14 @@ function Register({
           registerUser(register)
         }}
       >
-        <span className="login-brand">{HOTEL_NAME}</span>
+        <a className="login-brand" {...linkProps('/')}>
+          {brand}
+        </a>
 
         <h1>Crear cuenta</h1>
 
         <p>
-          Regístrate para realizar reservaciones.
+          {subtitle || 'Regístrate para realizar reservaciones.'}
         </p>
 
         <label>

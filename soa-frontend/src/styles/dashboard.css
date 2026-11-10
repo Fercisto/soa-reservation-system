@@ -1086,10 +1086,6 @@ button.category-chip.active {
 }
 
 @media (max-width: 700px) {
-  .admin-tabs {
-    overflow-x: auto;
-  }
-
   .admin-tabs button {
     flex: 0 0 auto;
   }
@@ -1326,10 +1322,6 @@ button.category-chip.active {
 }
 
 @media (max-width: 700px) {
-  .customer-tabs {
-    overflow-x: auto;
-  }
-
   .customer-tabs button {
     flex-shrink: 0;
     padding: 10px 12px;
@@ -1437,5 +1429,1226 @@ button.category-chip.active {
 
   .overview-hero strong {
     font-size: 40px;
+  }
+}
+
+/* SaaS platform: home page */
+
+.landing {
+  min-height: 100vh;
+  padding: 0 5vw 48px;
+  background: #f5f5f2;
+  color: #202522;
+}
+
+.landing-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 22px 0;
+}
+
+.landing-brand {
+  color: #235b46;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.landing-nav nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+
+.landing-nav nav a:not(.simple-button) {
+  color: #4e5751;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.landing-nav nav a:not(.simple-button):hover {
+  color: #235b46;
+}
+
+.landing-nav .simple-button,
+.landing-hero .simple-button {
+  text-decoration: none;
+}
+
+.landing-hero {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 72px 0 56px;
+  text-align: center;
+}
+
+.landing-hero h1 {
+  font-size: clamp(34px, 6vw, 56px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.landing-hero p {
+  max-width: 620px;
+  margin: 18px auto 0;
+  color: #59625c;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.landing-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+  margin-top: 30px;
+}
+
+.landing-section {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 0 8px;
+}
+
+.landing-section-heading {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.landing-section-heading h2 {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.landing-section-heading p {
+  margin-top: 8px;
+  color: #68706a;
+}
+
+/* Plan cards: pick one, like a streaming service sign-up. */
+
+.plan-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.plan-card {
+  --plan-color: #235b46;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px;
+  border: 2px solid #d9dcd5;
+  border-radius: 12px;
+  color: #202522;
+  background: #fff;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+article.plan-card {
+  cursor: default;
+}
+
+.plan-bronze { --plan-color: #8a5a2b; }
+.plan-silver { --plan-color: #5d6670; }
+.plan-gold { --plan-color: #9a7414; }
+
+.plan-card:hover {
+  border-color: var(--plan-color);
+}
+
+.plan-card.selected {
+  border-color: var(--plan-color);
+  box-shadow: 0 10px 30px #20252218;
+  transform: translateY(-2px);
+}
+
+.plan-name {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--plan-color);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.plan-card strong {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.plan-card strong small {
+  color: #68706a;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.plan-tagline,
+.plan-limit {
+  color: #59625c;
+  font-size: 14px;
+}
+
+.plan-bonus {
+  color: var(--plan-color);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.plan-compare {
+  margin-top: 22px;
+  overflow-x: auto;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.plan-compare table {
+  min-width: 560px;
+}
+
+.plan-compare th:not(:first-child),
+.plan-compare td:not(:first-child) {
+  width: 18%;
+  text-align: center;
+}
+
+.plan-compare .selected {
+  background: #f1f6f2;
+  font-weight: 700;
+}
+
+.plan-compare .check {
+  color: #235b46;
+  font-weight: 700;
+}
+
+.plan-compare .dash {
+  color: #b5bab3;
+}
+
+.plan-continue {
+  display: block;
+  width: min(100% - 32px, 360px);
+  margin: 20px auto;
+}
+
+.credit-explainer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.credit-explainer article {
+  padding: 20px 22px;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.credit-explainer h3 {
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.credit-explainer ul {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.credit-explainer li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.credit-explainer li b {
+  color: #59625c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hotel-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.hotel-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  color: #202522;
+  background: #fff;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.hotel-card:hover {
+  border-color: #235b46;
+  box-shadow: 0 10px 30px #20252214;
+}
+
+.hotel-card-city {
+  color: #235b46;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.hotel-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.hotel-card p {
+  color: #59625c;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.hotel-card div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7e2;
+  color: #59625c;
+  font-size: 13px;
+}
+
+.hotel-card-tag {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #9a7414;
+  background: #f6edd2;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.landing-footer {
+  max-width: 1180px;
+  margin: 56px auto 0;
+  padding-top: 20px;
+  border-top: 1px solid #d9dcd5;
+  color: #68706a;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Hotel sign-up */
+
+.signup-page {
+  padding: 32px 16px;
+}
+
+.signup-card {
+  width: min(100%, 520px);
+}
+
+.login-brand {
+  text-decoration: none;
+}
+
+.signup-plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.plan-chip {
+  --plan-color: #235b46;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border: 2px solid #d9dcd5;
+  border-radius: 8px;
+  color: #202522;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.plan-chip span {
+  color: #68706a;
+  font-size: 12px;
+}
+
+.plan-chip.selected {
+  border-color: var(--plan-color);
+  background: #fafbf8;
+}
+
+.plan-chip.selected b {
+  color: var(--plan-color);
+}
+
+.signup-card fieldset {
+  margin-top: 20px;
+  padding: 0;
+  border: 0;
+}
+
+.signup-card legend {
+  color: #235b46;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Admin panel: plan, credits and locked modules */
+
+.admin-tabs {
+  /* Tabs that do not fit go to a new row, so the menu grows instead of scrolling. */
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.admin-tabs button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-tabs button.locked {
+  color: #9aa09b;
+}
+
+.tab-badge {
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #68706a;
+  background: #eceee9;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tab-badge.on {
+  color: #245c43;
+  background: #dcecdf;
+}
+
+.plan-pill,
+.credit-pill {
+  padding: 5px 10px;
+  border: 1px solid #d9dcd5;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plan-pill {
+  --plan-color: #944332;
+  border-color: var(--plan-color);
+  color: var(--plan-color);
+}
+
+.credit-pill {
+  color: #235b46;
+}
+
+.simple-message.warning {
+  color: #7a4f12;
+  background: #f5e7c9;
+}
+
+.locked-module,
+.pass-gate {
+  max-width: 1180px;
+  margin: 28px auto;
+  padding: 40px 28px;
+  border: 1px dashed #c9cec6;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.locked-module {
+  text-align: center;
+}
+
+.lock-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: #68706a;
+  background: #f0f1ed;
+}
+
+.locked-module h1 {
+  margin-top: 14px;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.locked-module p {
+  max-width: 520px;
+  margin: 10px auto 22px;
+  color: #59625c;
+}
+
+.pass-gate {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.pass-tag {
+  color: #235b46;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pass-gate h1 {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.pass-gate-info p {
+  margin-top: 10px;
+  color: #59625c;
+  line-height: 1.5;
+}
+
+.pass-gate-info ul {
+  margin-top: 16px;
+  padding-left: 18px;
+  color: #4e5751;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.pass-purchase {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #e5e7e2;
+  border-radius: 10px;
+  background: #fafbf8;
+}
+
+.pass-purchase label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #4e5751;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pass-purchase input,
+.settings-form input,
+.report-form input,
+.campaign-form input,
+.campaign-form textarea {
+  padding: 9px 11px;
+  border: 1px solid #cfd5ce;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+}
+
+.pass-units {
+  display: flex;
+  border: 1px solid #cfd5ce;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.pass-units button {
+  flex: 1;
+  padding: 8px;
+  border: 0;
+  color: #4e5751;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pass-units button + button {
+  border-left: 1px solid #cfd5ce;
+}
+
+.pass-units button.active {
+  color: #fff;
+  background: #235b46;
+}
+
+.pass-cost {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.pass-cost span {
+  color: #68706a;
+}
+
+.pass-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  max-width: 1180px;
+  margin: 18px auto 0;
+  padding: 10px 14px;
+  border-radius: 6px;
+  color: #245c43;
+  background: #dcecdf;
+  font-size: 14px;
+}
+
+.pass-extend {
+  max-width: 420px;
+  margin: 12px auto 0 0;
+}
+
+.module-note {
+  max-width: 1180px;
+  margin: 12px auto 0;
+  color: #68706a;
+  font-size: 13px;
+}
+
+/* "Mi plan" */
+
+.account-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 1180px;
+  margin: 0 auto 8px;
+}
+
+.account-summary article {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 22px;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.account-summary span {
+  color: #59625c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.account-summary strong {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.account-plan strong {
+  color: var(--plan-color, #202522);
+}
+
+.account-plan.plan-none strong {
+  color: #944332;
+}
+
+.account-summary small {
+  color: #68706a;
+  font-size: 13px;
+}
+
+.account-section {
+  max-width: 1180px;
+  margin: 32px auto 0;
+}
+
+.account-section > h2 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.account-note {
+  margin: 6px 0 16px;
+  color: #68706a;
+  font-size: 14px;
+}
+
+.plan-cards.compact .plan-card strong {
+  font-size: 24px;
+}
+
+.plan-features {
+  flex: 1;
+  margin: 4px 0 10px;
+  padding-left: 18px;
+  color: #4e5751;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.simple-button.secondary {
+  color: #235b46;
+  background: #fff;
+}
+
+.simple-button.secondary:hover {
+  background: #f1f6f2;
+}
+
+.simple-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.credit-packages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.credit-packages article {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.credit-packages span {
+  color: #59625c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.credit-packages strong {
+  font-size: 22px;
+}
+
+.credit-packages small {
+  margin-bottom: 8px;
+  color: #68706a;
+}
+
+.pass-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.pass-list article {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid #d9dcd5;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.pass-list article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pass-list .pass-purchase {
+  grid-column: 1 / -1;
+}
+
+.pass-on {
+  color: #245c43;
+  font-size: 13px;
+}
+
+.pass-off {
+  color: #68706a;
+  font-size: 13px;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.credit-in {
+  color: #245c43;
+  font-weight: 700;
+}
+
+.credit-out {
+  color: #944332;
+  font-weight: 700;
+}
+
+.account-section .simple-table-card {
+  margin-top: 12px;
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 20px;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.settings-form label,
+.report-form label,
+.campaign-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #4e5751;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.settings-form .wide {
+  grid-column: 1 / -1;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 18px;
+}
+
+/* Reports */
+
+.report-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  max-width: 1180px;
+  margin: 0 auto 20px;
+  padding: 18px 20px;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.report-cost {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: auto;
+  font-size: 14px;
+}
+
+.report-cost small {
+  color: #68706a;
+}
+
+/* Analytics */
+
+.chart-card {
+  max-width: 1180px;
+  margin: 20px auto 0;
+  padding: 20px 22px;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.chart-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.chart-heading h2 {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.chart-heading p {
+  margin-top: 3px;
+  color: #68706a;
+  font-size: 13px;
+}
+
+.chart {
+  position: relative;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chart-grid line {
+  stroke: #eceee9;
+  stroke-width: 1;
+}
+
+.chart-grid text,
+.chart-axis {
+  fill: #68706a;
+  font-size: 11px;
+}
+
+.chart-bar {
+  fill: #235b46;
+  transition: opacity 0.1s;
+}
+
+.chart:hover .chart-bar:not(.active) {
+  opacity: 0.55;
+}
+
+.chart-label {
+  fill: #202522;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chart-hit {
+  fill: transparent;
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid #d9dcd5;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 24px #20252220;
+  font-size: 12px;
+  pointer-events: none;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.chart-tooltip span {
+  color: #4e5751;
+}
+
+.chart-table {
+  min-width: 0;
+}
+
+.room-bars {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.room-bars li {
+  display: grid;
+  grid-template-columns: 140px 1fr 56px;
+  gap: 4px 14px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.room-bars li > span {
+  display: flex;
+  flex-direction: column;
+  font-weight: 700;
+}
+
+.room-bars li > span small,
+.room-bars li > small {
+  color: #68706a;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.room-bars li > b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.room-bars li > small {
+  grid-column: 2 / -1;
+}
+
+/* Campaigns */
+
+.campaign-form {
+  display: grid;
+  gap: 14px;
+  max-width: 1180px;
+  margin: 0 auto 20px;
+  padding: 20px;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.campaign-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.campaign-form .simple-button {
+  justify-self: start;
+}
+
+.campaign-audiences {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 0;
+  border: 0;
+}
+
+.campaign-audiences legend {
+  margin-bottom: 8px;
+  color: #4e5751;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.campaign-audiences label b {
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: #245c43;
+  background: #dcecdf;
+  font-size: 12px;
+}
+
+/* Guests: hotel of each reservation */
+
+.reservation-hotel {
+  display: block;
+  margin-bottom: 4px;
+  color: #235b46;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.nav-actions a.simple-link {
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .plan-cards,
+  .credit-explainer,
+  .credit-packages,
+  .account-summary,
+  .pass-gate {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-form {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .landing-nav nav {
+    gap: 14px;
+  }
+}
+
+@media (max-width: 700px) {
+  .landing {
+    padding: 0 16px 40px;
+  }
+
+  .landing-hero {
+    padding: 40px 0 32px;
+  }
+
+  .signup-plans {
+    grid-template-columns: 1fr;
+  }
+
+  .room-bars li {
+    grid-template-columns: 90px 1fr 48px;
+  }
+
+  .report-cost {
+    margin-left: 0;
+  }
+
+  .nav-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+/* Hotel listing (/hoteles) */
+
+.landing-nav nav a[aria-current='page'] {
+  color: #235b46;
+}
+
+.hotels-page {
+  padding-top: 24px;
+}
+
+.hotels-heading h1 {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.hotels-heading p {
+  margin-top: 8px;
+  color: #68706a;
+}
+
+.hotel-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin: 24px 0 12px;
+  padding: 16px 18px;
+  border: 1px solid #d9dcd5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.hotel-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #4e5751;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hotel-filters .checkbox-label {
+  padding-bottom: 9px;
+}
+
+.hotel-search {
+  flex: 1 1 260px;
+}
+
+.hotel-filters input[type='search'],
+.hotel-filters select {
+  padding: 9px 11px;
+  border: 1px solid #cfd5ce;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+}
+
+.hotels-count {
+  margin-bottom: 14px;
+  color: #68706a;
+  font-size: 14px;
+}
+
+.see-all {
+  display: block;
+  width: fit-content;
+  margin: 22px auto 0;
+  text-decoration: none;
+}
+
+@media (max-width: 700px) {
+  .hotel-filters label:not(.checkbox-label) {
+    flex: 1 1 100%;
+  }
+}
+
+/* Guest pages share the header of the public pages (same height, brand and links). */
+
+.customer-app {
+  padding-top: 0;
+}
+
+.customer-app .simple-nav {
+  padding: 22px 0;
+  border-bottom: 0;
+}
+
+.customer-app .simple-nav > .brand {
+  color: #235b46;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.customer-app .nav-actions {
+  gap: 20px;
+}
+
+.customer-app .nav-actions a.simple-link,
+.customer-app .nav-actions > .simple-link {
+  color: #4e5751;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.customer-app .nav-actions a.simple-link:hover,
+.customer-app .nav-actions > .simple-link:hover {
+  color: #235b46;
+}
+
+@media (max-width: 700px) {
+  .customer-app .simple-nav > .brand {
+    font-size: 20px;
   }
 }

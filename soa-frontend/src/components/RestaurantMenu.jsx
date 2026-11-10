@@ -3,9 +3,9 @@ import { money } from '../utils/reservation.js'
 
 /**
  * Hotel restaurant menu for guests: available dishes grouped by category.
- * The menu is managed by admins and stored in the restaurant system's menu-service.
+ * Each hotel's admins manage its menu, stored in the restaurant system's menu-service.
  */
-function RestaurantMenu({ gql }) {
+function RestaurantMenu({ gql, hotelSlug }) {
   const [categories, setCategories] = useState([])
   const [dishes, setDishes] = useState([])
   const [selected, setSelected] = useState('')
@@ -14,18 +14,18 @@ function RestaurantMenu({ gql }) {
 
   useEffect(() => {
     gql(`
-      query RestaurantMenu {
-        menuCategories { id name }
-        menuDishes { id name description price categoryId available }
+      query RestaurantMenu($hotelSlug: String) {
+        menuCategories(hotelSlug: $hotelSlug) { id name }
+        menuDishes(hotelSlug: $hotelSlug) { id name description price categoryId available }
       }
-    `)
+    `, { hotelSlug })
       .then((data) => {
         setCategories(data.menuCategories)
         setDishes(data.menuDishes.filter((dish) => dish.available))
       })
       .catch((err) => setError(err.message))
       .finally(() => setReady(true))
-  }, [])
+  }, [hotelSlug])
 
   const groups = categories
     .filter((category) => !selected || String(category.id) === selected)

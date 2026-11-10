@@ -12,18 +12,22 @@ import {
   formatTime,
 } from '../utils/reservation.js'
 import { invoiceStatusLabel } from '../utils/invoice.js'
-import { HOTEL_NAME } from '../utils/brand.js'
+import { PLATFORM_NAME } from '../utils/brand.js'
+import { linkProps } from '../utils/router.js'
 
-const TABS = [
-  { id: 'book', label: 'Reservar' },
-  { id: 'reservations', label: 'Mis reservaciones' },
-  { id: 'restaurant', label: 'Restaurante' },
-  { id: 'invoices', label: 'Facturas' },
-]
+// On a hotel's page the guest books; in "Mi cuenta" only their stays at every hotel show.
+function tabsFor(onHotelPage, hasRestaurant) {
+  return [
+    onHotelPage && { id: 'book', label: 'Reservar' },
+    { id: 'reservations', label: 'Mis reservaciones' },
+    onHotelPage && hasRestaurant && { id: 'restaurant', label: 'Restaurante' },
+    { id: 'invoices', label: 'Facturas' },
+  ].filter(Boolean)
+}
 
 // Coming back from Stripe Checkout opens the reservations, where the payment result shows.
-function initialTab() {
-  return new URLSearchParams(window.location.search).has('payment')
+function initialTab(onHotelPage) {
+  return !onHotelPage || new URLSearchParams(window.location.search).has('payment')
     ? 'reservations'
     : 'book'
 }
@@ -51,8 +55,15 @@ function CustomerDashboard({
   notificationProps,
   gql,
   onInvoiceIssued,
+  hotelSlug,
+  hotel,
+  hotelError,
 }) {
-  const [tab, setTab] = useState(initialTab)
+  const onHotelPage = Boolean(hotelSlug)
+  const tabs = tabsFor(onHotelPage, hotel?.has_restaurant)
+  const [selectedTab, setTab] = useState(() => initialTab(onHotelPage))
+  // A tab that does not apply here (e.g. after leaving a hotel's page) falls back to the first one.
+  const tab = tabs.some((item) => item.id === selectedTab) ? selectedTab : tabs[0].id
   const [invoiceReservation, setInvoiceReservation] = useState(null)
   const currentDate = new Date()
   const today = [
@@ -73,9 +84,22 @@ function CustomerDashboard({
   return (
     <main className="customer-app">
       <header className="simple-nav">
-        <strong className="brand">{HOTEL_NAME}</strong>
+        <strong className="brand">
+          {onHotelPage ? hotel?.name || 'Hotel' : PLATFORM_NAME}
+          {onHotelPage && hotel?.city && <small>{hotel.city}</small>}
+        </strong>
 
         <div className="nav-actions">
+          <a className="simple-link" {...linkProps('/hoteles')}>
+            Explorar hoteles
+          </a>
+
+          {onHotelPage && (
+            <a className="simple-link" {...linkProps('/mi-cuenta')}>
+              Mi cuenta
+            </a>
+          )}
+
           <NotificationBell {...notificationProps} />
 
           <button
@@ -88,7 +112,7 @@ function CustomerDashboard({
       </header>
 
       <nav className="admin-tabs customer-tabs" aria-label="Secciones">
-        {TABS.map((item) => (
+        {tabs.map((item) => (
           <button
             key={item.id}
             className={tab === item.id ? 'active' : ''}
@@ -99,6 +123,12 @@ function CustomerDashboard({
           </button>
         ))}
       </nav>
+
+      {hotelError && (
+        <div className="simple-message error">
+          {hotelError}
+        </div>
+      )}
 
       {message && (
         <div className="simple-message success">
@@ -325,7 +355,8 @@ function CustomerDashboard({
               <h1>Mis reservaciones</h1>
 
               <p>
-                Paga, cancela o factura tus estancias.
+                Paga, cancela o factura tus estancias en cualquier hotel de{' '}
+                {PLATFORM_NAME}.
               </p>
             </div>
           </div>
@@ -355,6 +386,15 @@ function CustomerDashboard({
               return (
                 <article key={item.id}>
                   <div>
+                    {item.hotel && (
+                      <a
+                        className="reservation-hotel"
+                        {...linkProps(`/h/${item.hotel.slug}`)}
+                      >
+                        {item.hotel.name}
+                      </a>
+                    )}
+
                     <strong>
                       Habitación{' '}
                       {item.room?.number || item.room_id}
@@ -447,7 +487,9 @@ function CustomerDashboard({
         </section>
       )}
 
-      {tab === 'restaurant' && <RestaurantMenu gql={gql} />}
+      {tab === 'restaurant' && (
+        <RestaurantMenu gql={gql} hotelSlug={hotelSlug} />
+      )}
 
       {tab === 'invoices' && (
         <InvoiceList gql={gql} onChanged={onInvoiceIssued} />

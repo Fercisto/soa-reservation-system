@@ -3,6 +3,7 @@ import { Room } from '../../rooms/models/room.model.js';
 import { User } from '../../auth/models/user.model.js';
 import { Payment } from '../../payments/models/payment.model.js';
 import { Invoice } from '../../invoices/models/invoice.model.js';
+import { HotelRef } from '../../platform/platform.models.js';
 
 @ObjectType()
 export class Reservation {
@@ -14,6 +15,12 @@ export class Reservation {
 
   @Field(() => Int)
   user_id: number;
+
+  @Field(() => Int, { nullable: true })
+  hotel_id?: number;
+
+  @Field(() => HotelRef, { nullable: true })
+  hotel?: HotelRef;
 
   @Field()
   check_in: string;

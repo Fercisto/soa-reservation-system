@@ -55,7 +55,7 @@ class ReservationTest extends TestCase
 
     public function test_admin_can_view_all_reservations(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->admin();
         $customer = User::factory()->create(['role' => 'customer']);
         $room = $this->availableRoom();
 
@@ -133,7 +133,7 @@ class ReservationTest extends TestCase
 
     public function test_admin_can_view_and_cancel_any_reservation(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = $this->admin();
         $reservation = $this->reservationFor(User::factory()->create(['role' => 'customer']));
 
         $this->actingAs($admin)
@@ -260,6 +260,7 @@ class ReservationTest extends TestCase
     private function availableRoom(): Room
     {
         return Room::create([
+            'hotel_id' => $this->hotel()->id,
             'number' => fake()->unique()->numerify('###'),
             'type' => 'double',
             'price' => 125.50,
