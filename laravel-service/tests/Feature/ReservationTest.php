@@ -19,8 +19,8 @@ class ReservationTest extends TestCase
 
         $createResponse = $this->actingAs($user)->postJson('/api/reservations', [
             'room_id' => $room->id,
-            'check_in' => '2026-11-10',
-            'check_out' => '2026-11-15',
+            'check_in' => $this->day(10),
+            'check_out' => $this->day(15),
         ]);
 
         $createResponse
@@ -38,7 +38,7 @@ class ReservationTest extends TestCase
         $this->actingAs($user)
             ->getJson("/api/reservations/{$reservationId}")
             ->assertOk()
-            ->assertJsonPath('check_in', '2026-11-10');
+            ->assertJsonPath('check_in', $this->day(10));
 
         $this->actingAs($user)
             ->patchJson("/api/reservations/{$reservationId}/cancel")
@@ -61,8 +61,8 @@ class ReservationTest extends TestCase
 
         $this->actingAs($customer)->postJson('/api/reservations', [
             'room_id' => $room->id,
-            'check_in' => '2026-11-10',
-            'check_out' => '2026-11-12',
+            'check_in' => $this->day(10),
+            'check_out' => $this->day(12),
         ])->assertCreated();
 
         $this->actingAs($admin)
@@ -80,15 +80,15 @@ class ReservationTest extends TestCase
 
         $this->actingAs($user)->postJson('/api/reservations', [
             'room_id' => $room->id,
-            'check_in' => '2026-12-01',
-            'check_out' => '2026-12-05',
+            'check_in' => $this->day(30),
+            'check_out' => $this->day(34),
         ])->assertCreated();
 
         $this->actingAs($user)
             ->postJson('/api/reservations', [
                 'room_id' => $room->id,
-                'check_in' => '2026-12-04',
-                'check_out' => '2026-12-08',
+                'check_in' => $this->day(33),
+                'check_out' => $this->day(37),
             ])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Room is already reserved for the selected dates.');
@@ -267,5 +267,10 @@ class ReservationTest extends TestCase
             'capacity' => 2,
             'status' => 'available',
         ]);
+    }
+
+    private function day(int $offset): string
+    {
+        return now()->addDays($offset)->toDateString();
     }
 }

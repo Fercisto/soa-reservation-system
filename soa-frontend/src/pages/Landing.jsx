@@ -8,7 +8,7 @@ import PublicNav from '../components/PublicNav.jsx'
 import { CATALOG_QUERY, PASS_UNITS, PLAN_FEATURES } from '../utils/saas.js'
 
 // The home page shows a few hotels; /hoteles lists all of them.
-const HOME_HOTELS = 6
+const HOME_HOTELS = 8
 
 const PLAN_TAGLINES = {
   bronze: 'Para empezar a recibir reservaciones en línea.',

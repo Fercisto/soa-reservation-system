@@ -69,8 +69,8 @@ class RoomTest extends TestCase
         ]);
         $room->reservations()->create([
             'user_id' => User::factory()->create()->id,
-            'check_in' => '2026-12-10',
-            'check_out' => '2026-12-15',
+            'check_in' => $this->day(40),
+            'check_out' => $this->day(45),
             'status' => 'confirmed',
         ]);
 
@@ -78,11 +78,11 @@ class RoomTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1);
 
-        $this->getJson('/api/hotels/'.$this->hotel()->slug.'/rooms/available?check_in=2026-12-12&check_out=2026-12-18')
+        $this->getJson('/api/hotels/'.$this->hotel()->slug.'/rooms/available?check_in='.$this->day(42).'&check_out='.$this->day(48))
             ->assertOk()
             ->assertJsonCount(0);
 
-        $this->getJson('/api/hotels/'.$this->hotel()->slug.'/rooms/available?check_in=2026-12-15&check_out=2026-12-18')
+        $this->getJson('/api/hotels/'.$this->hotel()->slug.'/rooms/available?check_in='.$this->day(45).'&check_out='.$this->day(48))
             ->assertOk()
             ->assertJsonCount(1)
             ->assertJsonPath('0.number', '501');
@@ -120,5 +120,10 @@ class RoomTest extends TestCase
                 'capacity' => 1,
             ])
             ->assertForbidden();
+    }
+
+    private function day(int $offset): string
+    {
+        return now()->addDays($offset)->toDateString();
     }
 }

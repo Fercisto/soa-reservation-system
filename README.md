@@ -409,13 +409,30 @@ Invoicing variables (the defaults use Profact's test environment, see [Invoices]
 
 Invoicing needs the PHP **soap** extension: uncomment `extension=soap` in `php.ini` (in Laragon: *Menu → PHP → Extensions → soap*) and restart the server.
 
-The seeder creates two demo hotels and their users (password `password`):
+The seeder (`database/seeders/DemoDataSeeder.php`) creates a demo platform. Every account uses the password `password`:
 
-| Email | Role | Hotel |
-| ----- | ---- | ----- |
-| `admin@example.com` | admin | Hotel Casa Jacaranda (`/h/casa-jacaranda`), Gold |
-| `admin@marazul.com` | admin | Hotel Mar Azul (`/h/mar-azul`), Bronze |
-| `customer@example.com` | customer (guest) | – |
+| Admin | Hotel | Plan | Status |
+| ----- | ----- | ---- | ------ |
+| `admin@example.com` | Hotel Casa Jacaranda, Aguascalientes (`/h/casa-jacaranda`) | Gold | Active |
+| `admin@bahiadorada.com` | Hotel Bahía Dorada, Cancún (`/h/bahia-dorada`) | Gold | Active |
+| `admin@sierraalta.com` | Hotel Sierra Alta, Monterrey (`/h/sierra-alta`) | Silver | Active |
+| `admin@posadadelrio.com` | Posada del Río, Guanajuato (`/h/posada-del-rio`) | Silver | Active, ends in 3 days |
+| `admin@marazul.com` | Hotel Mar Azul, Mazatlán (`/h/mar-azul`) | Bronze | Active |
+| `admin@villapacifico.com` | Villa del Pacífico, Puerto Vallarta (`/h/villa-del-pacifico`) | Silver | Active |
+| `admin@hostalcentro.com` | Hostal Centro Oaxaca, Oaxaca (`/h/hostal-centro-oaxaca`) | Bronze | Active |
+| `admin@casadelosaltos.com` | Casa de los Altos, San Cristóbal de las Casas (`/h/casa-de-los-altos`) | Bronze | Active |
+| `admin@losagaves.com` | Hacienda Los Agaves, Tequila (`/h/hacienda-los-agaves`) | Gold | Active |
+| `admin@cielitolindo.com` | Hotel Cielito Lindo, Ciudad de México (`/h/hotel-cielito-lindo`) | Gold | Active |
+| `admin@miradorsierra.com` | Mirador de la Sierra, Creel (`/h/mirador-de-la-sierra`) | Silver | Active |
+| `admin@posadalabufa.com` | Posada La Bufa, Zacatecas (`/h/posada-la-bufa`) | Bronze | Active |
+| `admin@colonialqro.com` | Hotel Colonial Querétaro | Silver | Expired 5 days ago |
+| `admin@nuevoamanecer.com` | Hotel Nuevo Amanecer, Puebla | – | Signed up, never paid |
+
+Guests: `customer@example.com` and 11 more (`ana.torres@correo.mx`, `carlos.vega@correo.mx`, `mariana.lopez@correo.mx`, `javier.ruiz@correo.mx`, `fernanda.soto@correo.mx`, `miguel.herrera@correo.mx`, `valeria.cruz@correo.mx`, `roberto.navarro@correo.mx`, `lucia.morales@correo.mx`, `diego.castillo@correo.mx`, `paola.reyes@correo.mx`).
+
+Each hotel with a plan gets 150 days of history and 45 days of future bookings: stays paid by card or cash, some cancelled and refunded, the subscription periods it paid, a credit package, two monthly PDF reports, a campaign sent last week and an analytics pass that is open now. The credit ledger adds up to each hotel's balance.
+
+Hotels that already have reservations keep their data: running `php artisan db:seed` again only refreshes plans, demo users (and their password) and rooms. `php artisan migrate:fresh --seed` rebuilds the demo from scratch and **deletes every other record**.
 
 ### 2. NestJS (port 3000)
 
