@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { money } from '../utils/reservation.js'
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -38,6 +38,22 @@ function columnPath(x, y, width, height) {
   const r = Math.min(4, width / 2, height)
 
   return `M${x},${y + height} V${y + r} Q${x},${y} ${x + r},${y} H${x + width - r} Q${x + width},${y} ${x + width},${y + r} V${y + height} Z`
+}
+
+// Small "i" button that explains a figure on hover or keyboard focus.
+function InfoTip({ text }) {
+  const id = useId()
+
+  return (
+    <span className="info-tip">
+      <button type="button" aria-label="Qué significa" aria-describedby={id}>
+        i
+      </button>
+      <span role="tooltip" id={id}>
+        {text}
+      </span>
+    </span>
+  )
 }
 
 function RevenueChart({ months }) {
@@ -144,13 +160,48 @@ function AdminAnalytics({ gql }) {
   }
 
   const tiles = [
-    { label: 'Ocupación (90 días)', value: `${data.occupancy_90d}%` },
-    { label: 'Tarifa promedio (ADR)', value: money(data.adr_90d) },
-    { label: 'Ingreso por habitación disponible (RevPAR)', value: money(data.revpar_90d) },
-    { label: 'Estancia promedio', value: `${data.average_stay} noches` },
-    { label: 'Anticipación promedio', value: `${data.average_lead_time} días` },
-    { label: 'Cancelaciones (90 días)', value: `${data.cancellation_rate}%` },
-    { label: 'Huéspedes que regresan', value: `${data.repeat_guest_rate}%`, note: `${data.guests} huéspedes en total` },
+    {
+      label: 'Habitaciones ocupadas',
+      value: `${data.occupancy_90d}%`,
+      note: 'Últimos 90 días',
+      help: 'De todas las noches que tus habitaciones pudieron venderse en los últimos 90 días, qué porcentaje se vendió. Se calcula: noches vendidas ÷ (habitaciones en operación × 90 días).',
+    },
+    {
+      label: 'Precio promedio por noche',
+      value: money(data.adr_90d),
+      note: 'ADR · últimos 90 días',
+      help: 'Lo que cobras en promedio por cada noche vendida (ADR, tarifa diaria promedio). Se calcula: ingreso por habitaciones ÷ noches vendidas.',
+    },
+    {
+      label: 'Ingreso por habitación cada noche',
+      value: money(data.revpar_90d),
+      note: 'RevPAR · últimos 90 días',
+      help: 'Cuánto ingresa en promedio cada habitación por noche, contando también las noches que quedó vacía (RevPAR). Combina precio y ocupación: ingreso por habitaciones ÷ noches disponibles.',
+    },
+    {
+      label: 'Noches por estancia',
+      value: `${data.average_stay} noches`,
+      note: 'Promedio',
+      help: 'Cuántas noches se queda un huésped en promedio, según todas las reservaciones confirmadas.',
+    },
+    {
+      label: 'Anticipación al reservar',
+      value: `${data.average_lead_time} días`,
+      note: 'Promedio',
+      help: 'Con cuántos días de anticipación reservan tus huéspedes en promedio: días entre la fecha en que se hizo la reservación y la fecha de entrada.',
+    },
+    {
+      label: 'Reservaciones canceladas',
+      value: `${data.cancellation_rate}%`,
+      note: 'Últimos 90 días',
+      help: 'De las reservaciones hechas en los últimos 90 días, qué porcentaje se canceló: canceladas ÷ (confirmadas + canceladas).',
+    },
+    {
+      label: 'Huéspedes que repiten',
+      value: `${data.repeat_guest_rate}%`,
+      note: `${data.guests} huéspedes en total`,
+      help: 'Porcentaje de tus huéspedes que se han hospedado más de una vez en tu hotel: huéspedes con 2 o más estancias confirmadas ÷ total de huéspedes.',
+    },
   ]
 
   return (
@@ -165,7 +216,10 @@ function AdminAnalytics({ gql }) {
       <section className="stat-grid">
         {tiles.map((tile) => (
           <article className="stat-tile" key={tile.label}>
-            <span>{tile.label}</span>
+            <span className="stat-label">
+              {tile.label}
+              <InfoTip text={tile.help} />
+            </span>
             <strong>{tile.value}</strong>
             {tile.note && <small>{tile.note}</small>}
           </article>
