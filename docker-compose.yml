@@ -1,0 +1,19 @@
+# Message broker for the platform: service usage log and notifications.
+#   docker compose up -d
+# Management UI: http://localhost:15672 (user and password below)
+services:
+  rabbitmq:
+    image: rabbitmq:3.13.7-management
+    container_name: hospedia-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: hospedia
+      RABBITMQ_DEFAULT_PASS: hospedia
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+volumes:
+  rabbitmq-data:

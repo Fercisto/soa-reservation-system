@@ -5,12 +5,15 @@ namespace App\Notifications;
 use App\Models\Campaign;
 use App\Models\Hotel;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\SerializesModels;
 
 /**
  * A hotel's campaign message, stored in the guest's in-app notifications.
  */
 class GuestCampaign extends Notification
 {
+    use SerializesModels;
+
     public function __construct(
         public readonly Hotel $hotel,
         public readonly Campaign $campaign,

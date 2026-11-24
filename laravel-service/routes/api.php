@@ -12,6 +12,7 @@ use App\Http\Controllers\HotelController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PlatformController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\ReservationController;
@@ -105,6 +106,14 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::get('/admin/summary', AdminSummaryController::class)->middleware('hotel:feature,overview');
+
+    // Platform operator.
+    Route::middleware('role:superadmin')->prefix('platform')->group(function () {
+        Route::get('/health', [PlatformController::class, 'health']);
+        Route::get('/logs', [PlatformController::class, 'logs']);
+        Route::get('/logs/summary', [PlatformController::class, 'summary']);
+        Route::get('/hotels', [PlatformController::class, 'hotels']);
+    });
 
     // Accessed with a time pass.
     Route::get('/analytics', AnalyticsController::class)->middleware('hotel:pass,analytics');

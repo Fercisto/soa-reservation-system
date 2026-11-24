@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\Report;
 use App\Models\Reservation;
 use App\Models\Room;
+use App\Models\ServiceLog;
 use App\Models\User;
 use App\Notifications\GuestCampaign;
 use App\Notifications\ReservationNotifier;
@@ -319,6 +320,73 @@ class DemoDataSeeder extends Seeder
             }
 
             DB::transaction(fn () => $this->activity($hotel, $admin, $definition));
+        }
+
+        // Platform operator: service status and usage log.
+        $this->user('superadmin@hospedia.mx', 'Operación Hospedia', 'superadmin');
+
+        if (! ServiceLog::exists()) {
+            DB::transaction(fn () => $this->serviceLogHistory());
+        }
+    }
+
+    /**
+     * A day of service usage so the platform dashboard has data before anyone uses the app.
+     * From then on the log fills with real usage through RabbitMQ.
+     */
+    private function serviceLogHistory(): void
+    {
+        $operations = [
+            ['Autenticación', 'login', 'mutation', 140],
+            ['Hoteles', 'hotels', 'query', 45],
+            ['Hoteles', 'hotel', 'query', 30],
+            ['Habitaciones', 'availableRooms', 'query', 60],
+            ['Reservaciones', 'reservations', 'query', 55],
+            ['Reservaciones', 'createReservation', 'mutation', 420],
+            ['Pagos', 'verifyPayment', 'mutation', 610],
+            ['Facturación', 'requestInvoice', 'mutation', 1700],
+            ['Suscripción y créditos', 'buyCredits', 'mutation', 520],
+            ['Reportes', 'generateReport', 'mutation', 380],
+            ['Analítica', 'analytics', 'query', 210],
+            ['Restaurante', 'menuDishes', 'query', 160],
+            ['Personal', 'employees', 'query', 150],
+            ['Notificaciones', 'ReservationConfirmed', 'worker', 12],
+        ];
+        $hotels = Hotel::active()->with('admins')->get()->values();
+        $rows = [];
+
+        for ($index = 0; $index < 420; $index++) {
+            [$service, $operation, $kind, $duration] = $operations[($index * 11 + intdiv($index, 3)) % count($operations)];
+            // Different strides so services, hotels and guests mix instead of repeating together.
+            $hotel = $hotels[($index * 5 + intdiv($index, 7)) % $hotels->count()];
+            $admin = $hotel->admins->first();
+            $guest = $this->guests[($index * 3 + intdiv($index, 5)) % count($this->guests)];
+            $byAdmin = in_array($service, ['Suscripción y créditos', 'Reportes', 'Analítica', 'Personal'], true);
+            $failed = $index % 23 === 7;
+            $user = $kind === 'worker' ? null : ($byAdmin ? $admin : $guest);
+            $occurredAt = now()->subMinutes(($index * 1440 / 420) + ($index % 5))->setSecond($index % 60);
+
+            $rows[] = [
+                'service' => $service,
+                'operation' => $operation,
+                'kind' => $kind,
+                'source' => $kind === 'worker' ? 'worker' : 'gateway',
+                'user_id' => $user?->id,
+                'actor' => $kind === 'worker' ? '2 destinatarios' : $user?->email,
+                'role' => $user?->role,
+                'hotel_id' => $hotel->id,
+                'success' => ! $failed,
+                'status_code' => $failed ? [422, 402, 503][$index % 3] : null,
+                'error' => $failed ? ['Room is already reserved for the selected dates.', 'Not enough credits: 3 required, 1 available. Buy a credit package.', 'The restaurant service is unavailable'][$index % 3] : null,
+                'duration_ms' => (int) round($duration * (0.6 + ($index % 9) / 10)),
+                'ip' => '127.0.0.1',
+                'occurred_at' => $occurredAt->utc(),
+                'created_at' => $occurredAt->utc(),
+            ];
+        }
+
+        foreach (array_chunk($rows, 100) as $chunk) {
+            ServiceLog::insert($chunk);
         }
     }
 

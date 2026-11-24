@@ -3,6 +3,7 @@ import Login from '../components/Login.jsx'
 import Register from '../components/Register.jsx'
 import AdminDashboard from '../components/AdminDashboard.jsx'
 import CustomerDashboard from '../components/CustomerDashboard.jsx'
+import PlatformDashboard from '../components/PlatformDashboard.jsx'
 import {
   graphqlRequest,
   loginRequest,
@@ -11,7 +12,7 @@ import {
 } from '../services/api.js'
 import { PLATFORM_NAME } from '../utils/brand.js'
 import { navigate } from '../utils/router.js'
-import { readSession, removeSession, saveSession } from '../utils/session.js'
+import { homeFor, readSession, removeSession, saveSession } from '../utils/session.js'
 import { CATALOG_QUERY, HOTEL_ACCOUNT_FIELDS } from '../utils/saas.js'
 
 const EMPTY_ROOM = {
@@ -91,19 +92,24 @@ function Dashboard({ route }) {
   const [unreadCount, setUnreadCount] = useState(0)
 
   const isAdmin = session?.user?.role === 'admin'
+  const isSuperadmin = session?.user?.role === 'superadmin'
 
-  // Each kind of user has its own place: admins the panel, guests their account or a hotel page.
+  // Each kind of user has its own place: the operator the platform panel, admins their hotel's
+  // panel, guests their account or a hotel's page.
   useEffect(() => {
     if (!session) {
       return
     }
 
-    if (isAdmin && route.page !== 'panel') {
-      navigate('/panel', { replace: true })
-    } else if (!isAdmin && ['panel', 'login'].includes(route.page)) {
-      navigate('/mi-cuenta', { replace: true })
+    const home = homeFor(session.user)
+    const guestPages = ['account', 'hotel']
+
+    if ((isAdmin || isSuperadmin) && window.location.pathname !== home) {
+      navigate(home, { replace: true })
+    } else if (!isAdmin && !isSuperadmin && !guestPages.includes(route.page)) {
+      navigate(home, { replace: true })
     }
-  }, [session, isAdmin, route.page])
+  }, [session, isAdmin, isSuperadmin, route.page])
 
   useEffect(() => {
     setHotel(null)
@@ -132,10 +138,10 @@ function Dashboard({ route }) {
       if (route.page === 'panel') {
         loadAdminData()
       }
-    } else {
+    } else if (!isSuperadmin) {
       loadCustomerData()
     }
-  }, [session, isAdmin, hotelSlug, route.page])
+  }, [session, isAdmin, isSuperadmin, hotelSlug, route.page])
 
   useEffect(() => {
     if (!session || isAdmin || !customerDataReady) {
@@ -985,6 +991,16 @@ function Dashboard({ route }) {
           clearMessage()
           setShowRegister(true)
         }}
+      />
+    )
+  }
+
+  if (isSuperadmin) {
+    return (
+      <PlatformDashboard
+        gql={gql}
+        logout={logout}
+        notificationProps={notificationProps}
       />
     )
   }

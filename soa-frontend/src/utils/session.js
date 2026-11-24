@@ -28,5 +28,9 @@ export function removeSession() {
 
 // Where each kind of user lands after signing in.
 export function homeFor(user) {
+  if (user?.role === 'superadmin') {
+    return '/plataforma'
+  }
+
   return user?.role === 'admin' ? '/panel' : '/mi-cuenta'
 }

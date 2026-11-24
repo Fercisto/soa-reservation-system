@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Models\Reservation;
 use App\Models\User;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\SerializesModels;
 
 /**
  * In-app notification about a reservation, stored in the notifications table.
@@ -12,6 +13,9 @@ use Illuminate\Notifications\Notification;
  */
 abstract class ReservationNotification extends Notification
 {
+    // Models travel as identifiers when the notification goes through RabbitMQ.
+    use SerializesModels;
+
     public function __construct(public readonly Reservation $reservation)
     {
         $this->reservation->loadMissing(['room', 'user']);

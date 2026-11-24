@@ -6,10 +6,11 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\User;
-use Illuminate\Support\Facades\Notification;
+use App\Messaging\NotificationBus;
 
 /**
  * Decides who is notified about reservation events: the customer and the admins.
+ * The notifications travel through RabbitMQ (see NotificationBus).
  */
 class ReservationNotifier
 {
@@ -17,24 +18,24 @@ class ReservationNotifier
     {
         $notification = new ReservationConfirmed($reservation, $payment);
 
-        $reservation->user->notify($notification);
-        Notification::send(self::admins($reservation), $notification);
+        NotificationBus::send($reservation->user, $notification);
+        NotificationBus::send(self::admins($reservation), $notification);
     }
 
     public static function cancelled(Reservation $reservation, User $cancelledBy, ?Payment $refundedPayment): void
     {
         $notification = new ReservationCancelled($reservation, $cancelledBy, $refundedPayment);
 
-        $reservation->user->notify($notification);
-        Notification::send(self::admins($reservation)->except($cancelledBy->id), $notification);
+        NotificationBus::send($reservation->user, $notification);
+        NotificationBus::send(self::admins($reservation)->except($cancelledBy->id), $notification);
     }
 
     public static function invoiced(Reservation $reservation, Invoice $invoice, User $requestedBy): void
     {
         $notification = new InvoiceIssued($reservation, $invoice);
 
-        $reservation->user->notify($notification);
-        Notification::send(self::admins($reservation)->except($requestedBy->id), $notification);
+        NotificationBus::send($reservation->user, $notification);
+        NotificationBus::send(self::admins($reservation)->except($requestedBy->id), $notification);
     }
 
     public static function invoiceCancelled(Reservation $reservation, Invoice $invoice, User $cancelledBy): void
@@ -42,10 +43,10 @@ class ReservationNotifier
         $notification = new InvoiceCancelled($reservation, $invoice, $cancelledBy);
 
         if ($reservation->user_id !== $cancelledBy->id) {
-            $reservation->user->notify($notification);
+            NotificationBus::send($reservation->user, $notification);
         }
 
-        Notification::send(self::admins($reservation)->except($cancelledBy->id), $notification);
+        NotificationBus::send(self::admins($reservation)->except($cancelledBy->id), $notification);
     }
 
     private static function admins(Reservation $reservation)

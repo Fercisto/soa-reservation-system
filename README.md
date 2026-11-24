@@ -332,6 +332,40 @@ A time pass bought while another one of the same module runs is chained after it
 * NestJS: the restaurant and staff modules (classmate's services) check the plan from the admin's `me` and use the hotel's own API key.
 * React only hides or locks what the plan does not include; it never decides access.
 
+## Platform operation: service status, usage log and RabbitMQ
+
+The platform operator (role `superadmin`, account `superadmin@hospedia.mx`) has its own panel at `/plataforma`, separate from the hotels' admins:
+
+* **Servicios:** health of every service, refreshed every 10 seconds: the NestJS gateway, Laravel, MySQL, Stripe, Profact, RabbitMQ, the queue consumer and the classmate's restaurant services, plus the messages waiting in each RabbitMQ queue and its consumers.
+* **Bitácora:** every use of a service (who, hotel, operation, result, error and duration), with the last 24 hours summarized per hour and per service, filters and live refresh.
+* **Hoteles:** every hotel on the platform with its plan, expiry, credits, rooms, reservations, admins and last activity.
+
+### RabbitMQ
+
+RabbitMQ is a message broker: a service publishes a message in a queue and another one processes it later, so the first one does not wait and nothing is lost if the second one is down; messages wait in the queue until it comes back.
+
+```text
+NestJS (every GraphQL operation and /v1 call) ──publish──▶ hospedia.service_logs ──▶ php artisan hospedia:consume ──▶ service_logs table
+Laravel (reservation, invoice and campaign notifications) ──▶ hospedia.notifications ──▶ php artisan hospedia:consume ──▶ notifications table
+Messages that fail to process ──▶ hospedia.failed
+```
+
+* NestJS publishes the usage events from a global interceptor (`src/messaging`). Publishing never breaks a request: if the broker is down the event is dropped and the connection is retried.
+* Laravel publishes the in-app notifications through `App\Messaging\NotificationBus`. If the broker cannot be reached they are stored right away, so users never miss them.
+* `php artisan hospedia:consume` (`App\Console\Commands\ConsumeMessages`) stores the log, delivers the notifications (and logs each delivery) and writes a heartbeat the panel shows.
+* Queues are durable and messages persistent: they survive a broker restart.
+
+Run it:
+
+```bash
+docker compose up -d                          # RabbitMQ; management UI at http://localhost:15672 (hospedia / hospedia)
+cd laravel-service && php artisan hospedia:consume   # keep it running next to php artisan serve
+```
+
+Variables: `RABBITMQ_ENABLED`, `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` in `laravel-service/.env`; `RABBITMQ_ENABLED`, `RABBITMQ_URL`, `RABBITMQ_MANAGEMENT_URL` in `nest-client/.env`. With `RABBITMQ_ENABLED=false` notifications are stored without a queue and the log is not recorded.
+
+`php-amqplib` declares the PHP **sockets** extension: enable it in `php.ini` (`extension=sockets`) before `composer install`, or run `composer install --ignore-platform-req=ext-sockets`.
+
 ## External services consumed (restaurant system)
 
 The hotel consumes two services of a classmate's restaurant system (Java microservices). They are multi-tenant: each hotel identifies itself with its own API key and only sees and manages its own data.
@@ -428,6 +462,8 @@ The seeder (`database/seeders/DemoDataSeeder.php`) creates a demo platform. Ever
 | `admin@colonialqro.com` | Hotel Colonial Querétaro | Silver | Expired 5 days ago |
 | `admin@nuevoamanecer.com` | Hotel Nuevo Amanecer, Puebla | – | Signed up, never paid |
 
+Platform operator: `superadmin@hospedia.mx` (role `superadmin`, panel `/plataforma`). The seeder also adds a day of usage to the service log if it is empty.
+
 Guests: `customer@example.com` and 11 more (`ana.torres@correo.mx`, `carlos.vega@correo.mx`, `mariana.lopez@correo.mx`, `javier.ruiz@correo.mx`, `fernanda.soto@correo.mx`, `miguel.herrera@correo.mx`, `valeria.cruz@correo.mx`, `roberto.navarro@correo.mx`, `lucia.morales@correo.mx`, `diego.castillo@correo.mx`, `paola.reyes@correo.mx`).
 
 Each hotel with a plan gets 150 days of history and 45 days of future bookings: stays paid by card or cash, some cancelled and refunded, the subscription periods it paid, a credit package, two monthly PDF reports, a campaign sent last week and an analytics pass that is open now. The credit ledger adds up to each hotel's balance.
@@ -473,6 +509,7 @@ cd nest-client && npm test
 ## Technologies
 
 * PHP, Laravel, Laravel Sanctum
+* RabbitMQ (`php-amqplib`, `amqplib`) with Docker Compose
 * Stripe Checkout (`stripe/stripe-php`)
 * Profact PAC (SOAP) for CFDI 4.0 invoices
 * dompdf (`barryvdh/laravel-dompdf`) for PDF reports

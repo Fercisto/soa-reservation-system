@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Messaging\NotificationBus;
 use App\Models\Campaign;
 use App\Models\Hotel;
 use App\Models\User;
 use App\Notifications\GuestCampaign;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 
 /**
@@ -55,7 +55,7 @@ class CampaignController extends Controller
             'recipients' => $recipients->count(),
         ]);
 
-        Notification::send($recipients, new GuestCampaign($hotel, $campaign));
+        NotificationBus::send($recipients, new GuestCampaign($hotel, $campaign));
 
         return response()->json($campaign->load('user:id,name'), 201);
     }

@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
  *   /h/:slug           a hotel's booking page
  *   /panel             hotel admin panel
  *   /mi-cuenta         guest account
+ *   /plataforma        platform operator (superadmin)
  */
 export function matchRoute(pathname) {
   const hotel = pathname.match(/^\/h\/([^/]+)\/?$/)
@@ -24,6 +25,7 @@ export function matchRoute(pathname) {
     '/login': 'login',
     '/panel': 'panel',
     '/mi-cuenta': 'account',
+    '/plataforma': 'platform',
   }
 
   return { page: pages[pathname.replace(/\/$/, '') || '/'] || 'home' }

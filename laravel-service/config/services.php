@@ -42,6 +42,18 @@ return [
         'frontend_url' => rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/'),
     ],
 
+    // Message broker: the service usage log (published by NestJS) and the in-app notifications.
+    // Disabled, notifications are stored right away and the log is not recorded.
+    'rabbitmq' => [
+        'enabled' => (bool) env('RABBITMQ_ENABLED', false),
+        'host' => env('RABBITMQ_HOST', '127.0.0.1'),
+        'port' => (int) env('RABBITMQ_PORT', 5672),
+        'user' => env('RABBITMQ_USER', 'hospedia'),
+        'password' => env('RABBITMQ_PASSWORD', 'hospedia'),
+        'vhost' => env('RABBITMQ_VHOST', '/'),
+        'management_url' => env('RABBITMQ_MANAGEMENT_URL', 'http://localhost:15672'),
+    ],
+
     // Shared secret the NestJS gateway sends to internal routes (X-Gateway-Secret).
     'gateway' => [
         'secret' => env('GATEWAY_SECRET'),

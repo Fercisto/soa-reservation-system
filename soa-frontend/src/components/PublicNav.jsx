@@ -24,7 +24,7 @@ function PublicNav({ current }) {
         </a>
         {session ? (
           <a {...linkProps(homeFor(session.user))}>
-            {session.user.role === 'admin' ? 'Mi panel' : 'Mi cuenta'}
+            {session.user.role === 'customer' ? 'Mi cuenta' : 'Mi panel'}
           </a>
         ) : (
           <a {...linkProps('/login')}>Iniciar sesión</a>
